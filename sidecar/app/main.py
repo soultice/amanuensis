@@ -5,6 +5,7 @@ from fastapi import FastAPI
 import app.state as state
 from app.routes.health import router as health_router
 from app.routes.model import router as model_router
+from app.routes.transcribe import router as transcribe_router
 from app.services.model_manager import ModelManager
 
 
@@ -16,6 +17,7 @@ def create_app(user_data_dir: str) -> FastAPI:
     api = FastAPI(title="Amanuensis Sidecar", version="0.1.0")
     api.include_router(health_router)
     api.include_router(model_router)
+    api.include_router(transcribe_router)
     return api
 
 
