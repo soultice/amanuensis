@@ -76,41 +76,41 @@
 
 | Requirement | Phase | Status |
 |---|---|---|
-| AUDIO-01 | — | Pending |
-| AUDIO-02 | — | Pending |
-| AUDIO-03 | — | Pending |
-| AUDIO-04 | — | Pending |
-| AUDIO-05 | — | Pending |
-| TRANS-01 | — | Pending |
-| TRANS-02 | — | Pending |
-| TRANS-03 | — | Pending |
-| TRANS-04 | — | Pending |
-| NAV-01 | — | Pending |
-| NAV-02 | — | Pending |
-| NAV-03 | — | Pending |
-| ANNOT-01 | — | Pending |
-| ANNOT-02 | — | Pending |
-| ANNOT-03 | — | Pending |
-| ANNOT-04 | — | Pending |
-| ANNOT-05 | — | Pending |
-| ANNOT-06 | — | Pending |
-| ANNOT-07 | — | Pending |
-| ANNOT-08 | — | Pending |
-| ANNOT-09 | — | Pending |
-| ANNOT-10 | — | Pending |
-| EXPORT-01 | — | Pending |
-| EXPORT-02 | — | Pending |
-| EXPORT-03 | — | Pending |
-| EXPORT-04 | — | Pending |
-| EXPORT-05 | — | Pending |
-| SESSION-01 | — | Pending |
-| SESSION-02 | — | Pending |
-| SESSION-03 | — | Pending |
+| AUDIO-01 | Phase 2 | Pending |
+| AUDIO-02 | Phase 2 | Pending |
+| AUDIO-03 | Phase 2 | Pending |
+| AUDIO-04 | Phase 2 | Pending |
+| AUDIO-05 | Phase 2 | Pending |
+| TRANS-01 | Phase 2 | Pending |
+| TRANS-02 | Phase 2 | Pending |
+| TRANS-03 | Phase 2 | Pending |
+| TRANS-04 | Phase 2 | Pending |
+| NAV-01 | Phase 3 | Pending |
+| NAV-02 | Phase 3 | Pending |
+| NAV-03 | Phase 3 | Pending |
+| ANNOT-01 | Phase 4 | Pending |
+| ANNOT-02 | Phase 4 | Pending |
+| ANNOT-03 | Phase 4 | Pending |
+| ANNOT-04 | Phase 4 | Pending |
+| ANNOT-05 | Phase 4 | Pending |
+| ANNOT-06 | Phase 4 | Pending |
+| ANNOT-07 | Phase 4 | Pending |
+| ANNOT-08 | Phase 4 | Pending |
+| ANNOT-09 | Phase 4 | Pending |
+| ANNOT-10 | Phase 4 | Pending |
+| EXPORT-01 | Phase 5 | Pending |
+| EXPORT-02 | Phase 5 | Pending |
+| EXPORT-03 | Phase 5 | Pending |
+| EXPORT-04 | Phase 5 | Pending |
+| EXPORT-05 | Phase 5 | Pending |
+| SESSION-01 | Phase 4 | Pending |
+| SESSION-02 | Phase 4 | Pending |
+| SESSION-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 30 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 30 ⚠️
+- Mapped to phases: 30
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-12*

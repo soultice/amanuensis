@@ -1,92 +1,156 @@
 # Roadmap: Amanuensis
 
-## Overview
+**Created:** 2026-04-12
+**Requirements:** 30 v1 requirements across 5 phases
+**Granularity:** Coarse
 
-Four phases, strictly ordered by pipeline dependency. Phase 1 proves audio recording works on all three platforms. Phase 2 builds the transcription engine on top of verified audio. Phase 3 adds the annotation system and markdown export on top of verified transcription. Phase 4 wraps everything in persistent session management. Each phase must be fully functional before the next begins — this is the lesson from three failed previous attempts.
+---
 
-## Phases
+## Phase Overview
 
-- [ ] **Phase 1: Recording Pipeline** - Working Tauri app that records real audio to disk on macOS, Windows, and Linux with device selection and live level meter
-- [ ] **Phase 2: Transcription Engine** - Whisper large model downloads and transcribes to word-level timestamps; transcript renders with audio seek-on-click
-- [ ] **Phase 3: Annotation + Export** - Full annotation CRUD with CSS anchor dialog and type-driven markdown export
-- [ ] **Phase 4: Session Persistence** - Auto-save, save-on-close, session resume, and past sessions browser
+| # | Phase | Goal | Requirements | Plans |
+|---|---|---|---|---|
+| 1 | Foundation | Working Electron app with Python sidecar connected and health-checked | AUDIO-02 partial, structural | 1 |
+| 2 | Audio & Transcription | User can record audio and receive a word-level transcript | AUDIO-01–05, TRANS-01–04 | 2 |
+| 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | NAV-01–03 | 1 |
+| 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | ANNOT-01–10, SESSION-01–03 | 2 |
+| 5 | Export & Packaging | User can export Markdown docs and install the app | EXPORT-01–05 | 2 |
 
-## Phase Details
+---
 
-### Phase 1: Recording Pipeline
-**Goal**: A working Tauri v2 app that captures real audio from a user-selected input device on macOS, Windows, and Linux, writes it to a WAV file, and shows a live audio level indicator during recording.
-**Depends on**: Nothing (first phase)
-**Requirements**: ADEV-01, ADEV-02, REC-01, REC-02, REC-03
-**Success Criteria** (what must be TRUE):
-  1. User can open the app and see a dropdown listing all system audio input devices
-  2. User can select a device, press Record, speak, press Stop, and find a non-empty WAV file on disk
-  3. The level meter visibly reacts to voice and shows silence when the room is quiet
-  4. The above works on macOS (with mic permission), Windows (WASAPI), and Linux (PipeWire/ALSA)
-**Plans**: 3 plans
+## Phase 1: Foundation
 
-Plans:
-- [ ] 01-01: Tauri v2 project scaffold, build prerequisites, cross-platform CI verification
-- [ ] 01-02: Audio device enumeration (cpal) + device selection UI (Svelte 5)
-- [ ] 01-03: Recording pipeline (start/stop + WAV writer + live level meter events)
+**Goal:** A working Electron + Vue 3 app that spawns the Python FastAPI sidecar, verifies it's healthy, and exposes a secure IPC bridge to the renderer. No features yet — just a solid, secure scaffold that every subsequent phase builds on.
 
-### Phase 2: Transcription Engine
-**Goal**: The Whisper large model downloads automatically in the background with visible progress; recorded audio can be transcribed to text with word-level timestamps; the transcript renders in the UI with clicking a word seeking to that position in the audio.
-**Depends on**: Phase 1
-**Requirements**: MOD-01, MOD-02, MOD-03, TRNS-01, TRNS-02, TRNS-03, TRNS-04, SYNC-01, SYNC-02
-**Success Criteria** (what must be TRUE):
-  1. On first launch (no model file), the model downloads in the background; the rest of the UI is usable; a status indicator shows download progress
-  2. After stopping a recording, user can trigger transcription; a progress indicator updates during transcription; the UI does not freeze
-  3. The transcript shows each word individually with correct language auto-detected
-  4. Clicking a word in the transcript moves the waveform playhead to that word's audio position
-  5. Word timestamps are genuinely word-level (distinct start/end per word, not paragraph-level)
-**Plans**: 3 plans
+**Requirements:** *(structural — no user-facing requirements yet; enables all others)*
 
-Plans:
-- [ ] 02-01: Whisper model management (download with HTTP progress + status events + disk cache)
-- [ ] 02-02: Transcription engine (whisper-rs async + word-level timestamps + SQLite word storage)
-- [ ] 02-03: Transcript view (word list UI) + waveform (wavesurfer.js) + word-click seek sync
+**Plans:**
+1. Electron + Vue 3 scaffold (electron-vite, TypeScript, Pinia, preload contextBridge, contextIsolation)
+   - Python FastAPI sidecar (faster-whisper installed, `/health` endpoint, port discovery)
+   - Sidecar spawn on app start, health polling, graceful shutdown
 
-### Phase 3: Annotation + Export
-**Goal**: User can attach image, voice comment, or clipboard content annotations to any non-overlapping time range in the transcript via a CSS-anchor-positioned dialog; annotations can be edited, moved, and removed; the annotated transcript exports to a valid markdown file with each annotation injected at the correct position in the correct format.
-**Depends on**: Phase 2
-**Requirements**: ANN-01, ANN-02, ANN-03, ANN-04, ANN-05, ANN-06, DLG-01, DLG-02, DLG-03, EXP-01, EXP-02, EXP-03, EXP-04, EXP-05, EXP-06, EXP-07
-**Success Criteria** (what must be TRUE):
-  1. User can select a word range and open an annotation dialog anchored to that selection
-  2. User can paste an image, paste a URL, paste text, or pick a file — each is accepted and stored correctly
-  3. Attempting to create an annotation that overlaps an existing one shows an error and is rejected
-  4. Annotations appear as markers on the waveform timeline at their time position
-  5. User can click an annotation marker to edit, move, or remove it
-  6. Exported markdown file contains all annotations injected at their text position with correct format (image as `![]()`, audio as link, text as footnote, URL as hyperlink)
-**Plans**: 3 plans
+**Success Criteria:**
+1. App window opens and displays a placeholder Vue view
+2. Python sidecar starts automatically with the app and responds to `GET /health` with 200
+3. Renderer receives the sidecar port number via `window.api.getSidecarPort()` without error
+4. App closes cleanly, killing the sidecar process
+5. `contextIsolation: true` and `nodeIntegration: false` verified in Electron security audit
 
-Plans:
-- [ ] 03-01: Annotation data model (SQLite schema + CRUD commands + overlap enforcement in Rust)
-- [ ] 03-02: Annotation dialog (CSS anchor + `<dialog>` + clipboard detection + file picker + waveform markers)
-- [ ] 03-03: Markdown export (type-driven annotation injection + file save dialog)
+---
 
-### Phase 4: Session Persistence
-**Goal**: Sessions are automatically saved continuously and on close; the app reopens to the last active session with all transcript and annotation data intact; if no active session exists, a list of past sessions is shown.
-**Depends on**: Phase 3
-**Requirements**: SESS-01, SESS-02, SESS-03, SESS-04
-**Success Criteria** (what must be TRUE):
-  1. User can close the app mid-session and reopen it to find the transcript and annotations exactly as left
-  2. When no active session exists, the app opens to a list of past sessions sorted by date
-  3. User can open a past session and resume annotating or re-export it
-  4. App saves state automatically every 30 seconds and immediately on window close
-**Plans**: 2 plans
+## Phase 2: Audio & Transcription
 
-Plans:
-- [ ] 04-01: Session auto-save + save-on-close (tauri-plugin-sql + tauri-plugin-store)
-- [ ] 04-02: Sessions list UI + session open/resume flow + active session routing
+**Goal:** User can select a microphone, record audio with visual feedback, and receive a complete word-level transcript from the local Whisper model.
 
-## Progress
+**Requirements:** AUDIO-01, AUDIO-02, AUDIO-03, AUDIO-04, AUDIO-05, TRANS-01, TRANS-02, TRANS-03, TRANS-04
 
-**Execution Order:**
-Phases execute sequentially: 1 → 2 → 3 → 4
+**Plans:**
+1. Audio capture — device enumeration UI, MediaRecorder recording, level meter, playback
+2. Transcription pipeline — WebM→WAV conversion in sidecar, faster-whisper large-v3 transcription, word timestamps, progress SSE, transcript display
 
-| Phase | Plans Complete | Status | Completed |
-| ----- | -------------- | ------ | --------- |
-| 1. Recording Pipeline | 0/3 | Not started | - |
-| 2. Transcription Engine | 0/3 | Not started | - |
-| 3. Annotation + Export | 0/3 | Not started | - |
-| 4. Session Persistence | 0/2 | Not started | - |
+**Success Criteria:**
+1. User sees a dropdown listing all available audio input devices and can select one
+2. Clicking Record starts capture; the level meter visibly responds to voice input
+3. Clicking Stop ends recording; audio is playable in the app
+4. After stopping, transcription starts automatically with a visible progress indicator
+5. Transcribed text appears with per-word data (word, start, end timestamps) after completion
+6. Auto language detection works without any user input
+
+---
+
+## Phase 3: Transcript & Waveform
+
+**Goal:** User can click any word in the transcript to seek the audio to that point, select a word range for annotation, and see the current word highlighted during playback.
+
+**Requirements:** NAV-01, NAV-02, NAV-03
+
+**Plans:**
+1. WaveSurfer integration, word-span rendering, click-to-seek, playback word highlight, drag-to-select word range, WaveSurfer region highlight for selection
+
+**Success Criteria:**
+1. Transcript words are rendered as individually clickable spans
+2. Clicking a word seeks audio playback to within 200ms of that word's start timestamp
+3. During playback, the word currently being spoken is visually highlighted in the transcript
+4. User can drag across words to select a range; selected words are visually highlighted
+5. The selected word range is highlighted as a region on the WaveSurfer waveform
+
+---
+
+## Phase 4: Annotations & Persistence
+
+**Goal:** User can attach, edit, move, and remove image/text/link/audio annotations on word ranges, with non-overlapping enforcement, a CSS-anchored dialog UI, and full session persistence across relaunches.
+
+**Requirements:** ANNOT-01, ANNOT-02, ANNOT-03, ANNOT-04, ANNOT-05, ANNOT-06, ANNOT-07, ANNOT-08, ANNOT-09, ANNOT-10, SESSION-01, SESSION-02, SESSION-03
+
+**Plans:**
+1. Annotation CRUD — CSS anchor `<dialog>`, file picker, clipboard paste, image/text/link/audio types, non-overlap enforcement, edit/move/remove
+2. Session persistence — atomic JSON save every 30s, save-on-close, restore on launch (audio path, transcript, annotations)
+
+**Success Criteria:**
+1. Selecting a word range and clicking "Add annotation" opens a `<dialog>` positioned adjacent to the selection
+2. User can paste an image from clipboard or pick one from disk — it appears attached to the word range in the transcript view
+3. User can paste a URL from clipboard — it appears as a hyperlink annotation
+4. Selecting a word range that overlaps an existing annotation is blocked with a clear visual indicator
+5. Closing and relaunching the app restores the transcript and all annotations exactly
+6. Session auto-saves every 30s; a force-quit does not corrupt the session file
+
+---
+
+## Phase 5: Export & Packaging
+
+**Goal:** User can export a `.md` file with `assets/` folder where annotations appear at their transcript position in correct Markdown form, and the app is installable on macOS, Windows, and Linux.
+
+**Requirements:** EXPORT-01, EXPORT-02, EXPORT-03, EXPORT-04, EXPORT-05
+
+**Plans:**
+1. Markdown export — annotation injection at word-range position, image copy to `assets/`, hyperlink formatting, footnote formatting, native save dialog
+2. Cross-platform packaging — PyInstaller sidecar binary, electron-builder config, macOS entitlements, CI build for macOS/Windows/Linux
+
+**Success Criteria:**
+1. User can trigger export via a button and choose an output directory via a native dialog
+2. Exported `.md` contains transcript text with image annotations rendered as `![description](assets/filename.png)` at the correct position
+3. Hyperlink annotations appear as `[text](url)` at the correct position
+4. Other annotation types (text, audio) appear as Markdown footnotes at the correct position
+5. App packages successfully into a `.dmg` (macOS), `.exe` installer (Windows), and `.AppImage` (Linux) with no Python installation required on the target machine
+
+---
+
+## Requirement Coverage
+
+| Requirement | Phase |
+|---|---|
+| AUDIO-01 | Phase 2 |
+| AUDIO-02 | Phase 2 |
+| AUDIO-03 | Phase 2 |
+| AUDIO-04 | Phase 2 |
+| AUDIO-05 | Phase 2 |
+| TRANS-01 | Phase 2 |
+| TRANS-02 | Phase 2 |
+| TRANS-03 | Phase 2 |
+| TRANS-04 | Phase 2 |
+| NAV-01 | Phase 3 |
+| NAV-02 | Phase 3 |
+| NAV-03 | Phase 3 |
+| ANNOT-01 | Phase 4 |
+| ANNOT-02 | Phase 4 |
+| ANNOT-03 | Phase 4 |
+| ANNOT-04 | Phase 4 |
+| ANNOT-05 | Phase 4 |
+| ANNOT-06 | Phase 4 |
+| ANNOT-07 | Phase 4 |
+| ANNOT-08 | Phase 4 |
+| ANNOT-09 | Phase 4 |
+| ANNOT-10 | Phase 4 |
+| EXPORT-01 | Phase 5 |
+| EXPORT-02 | Phase 5 |
+| EXPORT-03 | Phase 5 |
+| EXPORT-04 | Phase 5 |
+| EXPORT-05 | Phase 5 |
+| SESSION-01 | Phase 4 |
+| SESSION-02 | Phase 4 |
+| SESSION-03 | Phase 4 |
+
+**Coverage: 30/30 ✓**
+
+---
+*Roadmap created: 2026-04-12*

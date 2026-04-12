@@ -1,55 +1,45 @@
-# Project State
+# State: Amanuensis
+
+**Last updated:** 2026-04-12
+**Current phase:** Phase 1 — Foundation
+**Overall progress:** 0/5 phases complete
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-12)
+See: `.planning/PROJECT.md` (updated 2026-04-12)
 
-**Core value:** A complete, reliable pipeline from spoken word to annotated markdown document — every step must actually work or the tool is useless.
-**Current focus:** Phase 1 — Recording Pipeline
+**Core value:** Turn a spoken recording into a shareable, annotated Markdown document with zero friction — fast enough that it doesn't interrupt the user's workflow.
+**Current focus:** Phase 1 — Foundation
 
-## Current Position
+## Phase Status
 
-Phase: 1 of 4 (Recording Pipeline)
-Plan: 0 of 3 in current phase
-Status: Ready to plan
-Last activity: 2026-04-12 - Project initialized, research complete, requirements defined, roadmap created
+| Phase | Name | Status | Requirements |
+|---|---|---|---|
+| 1 | Foundation | ○ Pending | — (structural) |
+| 2 | Audio & Transcription | ○ Pending | AUDIO-01–05, TRANS-01–04 |
+| 3 | Transcript & Waveform | ○ Pending | NAV-01–03 |
+| 4 | Annotations & Persistence | ○ Pending | ANNOT-01–10, SESSION-01–03 |
+| 5 | Export & Packaging | ○ Pending | EXPORT-01–05 |
 
-Progress: ░░░░░░░░░░ 0%
+## Active Phase: Phase 1 — Foundation
 
-## Performance Metrics
+**Goal:** A working Electron + Vue 3 app that spawns the Python FastAPI sidecar, verifies it's healthy, and exposes a secure IPC bridge to the renderer.
 
-**Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+**Success criteria:**
+1. ○ App window opens and displays a placeholder Vue view
+2. ○ Python sidecar starts automatically and responds to `GET /health` with 200
+3. ○ Renderer receives sidecar port via `window.api.getSidecarPort()` without error
+4. ○ App closes cleanly, killing the sidecar process
+5. ○ `contextIsolation: true` and `nodeIntegration: false` verified
 
-**By Phase:**
+## Completed Phases
 
-| Phase | Plans | Total | Avg/Plan |
-| ----- | ----- | ----- | -------- |
-| -     | -     | -     | -        |
+*(None yet)*
 
-## Accumulated Context
+## Key Decisions Log
 
-### Decisions
-
-- Init: Tauri v2 + cpal + whisper-rs + Svelte 5 + tauri-plugin-sql (SQLite) selected as stack
-- Init: Whisper large model, local only — hard requirement
-- Init: Audio data never crosses IPC — WAV on disk, asset:// URL in frontend
-- Init: Token timestamps must be explicitly set (`set_token_timestamps(true)`) — verified in research
-
-### Pending Todos
-
-None yet.
-
-### Blockers/Concerns
-
-- Phase 1: LLVM/libclang must be installed before whisper-rs compiles. Verify on all 3 platforms.
-- Phase 1: macOS mic entitlement must be in Info.plist + entitlements.plist or recording silently fails.
-- Phase 3: CSS anchor positioning may need JS fallback on Linux WebKitGTK.
-
-## Session Continuity
-
-Last session: 2026-04-12
-Stopped at: Roadmap and STATE.md created. Ready to begin Phase 1 planning.
-Resume file: None
+| Decision | Phase | Outcome |
+|---|---|---|
+| faster-whisper over openai-whisper | Pre-phase | - Pending |
+| JSON session files over SQLite | Pre-phase | - Pending |
+| Word indices as annotation position source of truth | Pre-phase | - Pending |
