@@ -28,16 +28,16 @@
 
 ### Annotations
 
-- [ ] **ANNOT-01**: User can attach an image annotation to a selected word range (via file picker)
-- [ ] **ANNOT-02**: User can attach an image annotation to a selected word range (via clipboard paste)
-- [ ] **ANNOT-03**: User can attach a text or hyperlink annotation to a selected word range (via clipboard paste)
-- [ ] **ANNOT-04**: User can attach an audio clip annotation to a selected word range (via file picker)
-- [ ] **ANNOT-05**: User can edit an existing annotation
-- [ ] **ANNOT-06**: User can move an annotation to a different word range
-- [ ] **ANNOT-07**: User can remove an annotation
-- [ ] **ANNOT-08**: Annotations cannot overlap — the app prevents selecting a word range that is already covered by an existing annotation
-- [ ] **ANNOT-09**: Annotation creation and editing uses a CSS-anchored `<dialog>` element that opens adjacent to the selected word range
-- [ ] **ANNOT-10**: The annotation dialog supports inserting content from clipboard and from a file picker
+- [x] **ANNOT-01**: User can attach an image annotation to a selected word range (via file picker)
+- [x] **ANNOT-02**: User can attach an image annotation to a selected word range (via clipboard paste)
+- [x] **ANNOT-03**: User can attach a text or hyperlink annotation to a selected word range (via clipboard paste)
+- [x] **ANNOT-04**: User can attach an audio clip annotation to a selected word range (via file picker)
+- [x] **ANNOT-05**: User can edit an existing annotation
+- [x] **ANNOT-06**: User can move an annotation to a different word range
+- [x] **ANNOT-07**: User can remove an annotation
+- [x] **ANNOT-08**: Annotations cannot overlap — the app prevents selecting a word range that is already covered by an existing annotation
+- [x] **ANNOT-09**: Annotation creation and editing uses a CSS-anchored `<dialog>` element that opens adjacent to the selected word range
+- [x] **ANNOT-10**: The annotation dialog supports inserting content from clipboard and from a file picker
 
 ### Export
 
@@ -49,9 +49,9 @@
 
 ### Session
 
-- [ ] **SESSION-01**: App auto-saves the current session every 30 seconds using atomic file writes
-- [ ] **SESSION-02**: App saves the session when the user closes the window
-- [ ] **SESSION-03**: App restores the previous session (audio, transcript, annotations) on next launch
+- [x] **SESSION-01**: App auto-saves the current session every 30 seconds using atomic file writes
+- [x] **SESSION-02**: App saves the session when the user closes the window
+- [x] **SESSION-03**: App restores the previous session (audio, transcript, annotations) on next launch
 
 ## v2 Requirements
 
@@ -88,24 +88,24 @@
 | NAV-01 | Phase 3 | Complete |
 | NAV-02 | Phase 3 | Complete |
 | NAV-03 | Phase 3 | Complete |
-| ANNOT-01 | Phase 4 | Pending |
-| ANNOT-02 | Phase 4 | Pending |
-| ANNOT-03 | Phase 4 | Pending |
-| ANNOT-04 | Phase 4 | Pending |
-| ANNOT-05 | Phase 4 | Pending |
-| ANNOT-06 | Phase 4 | Pending |
-| ANNOT-07 | Phase 4 | Pending |
-| ANNOT-08 | Phase 4 | Pending |
-| ANNOT-09 | Phase 4 | Pending |
-| ANNOT-10 | Phase 4 | Pending |
+| ANNOT-01 | Phase 4 | Complete |
+| ANNOT-02 | Phase 4 | Complete |
+| ANNOT-03 | Phase 4 | Complete |
+| ANNOT-04 | Phase 4 | Complete |
+| ANNOT-05 | Phase 4 | Complete |
+| ANNOT-06 | Phase 4 | Complete |
+| ANNOT-07 | Phase 4 | Complete |
+| ANNOT-08 | Phase 4 | Complete |
+| ANNOT-09 | Phase 4 | Complete |
+| ANNOT-10 | Phase 4 | Complete |
 | EXPORT-01 | Phase 5 | Pending |
 | EXPORT-02 | Phase 5 | Pending |
 | EXPORT-03 | Phase 5 | Pending |
 | EXPORT-04 | Phase 5 | Pending |
 | EXPORT-05 | Phase 5 | Pending |
-| SESSION-01 | Phase 4 | Pending |
-| SESSION-02 | Phase 4 | Pending |
-| SESSION-03 | Phase 4 | Pending |
+| SESSION-01 | Phase 4 | Complete |
+| SESSION-02 | Phase 4 | Complete |
+| SESSION-03 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 30 total

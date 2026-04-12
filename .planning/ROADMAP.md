@@ -13,7 +13,7 @@
 | 1 | Foundation | Working Electron app with Python sidecar connected and health-checked | Complete    | 2026-04-12 |
 | 2 | Audio & Transcription | User can record audio and receive a word-level transcript | Complete    | 2026-04-12 |
 | 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | Complete    | 2026-04-12 |
-| 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | ANNOT-01–10, SESSION-01–03 | 2 |
+| 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | Complete    | 2026-04-12 |
 | 5 | Export & Packaging | User can export Markdown docs and install the app | EXPORT-01–05 | 2 |
 
 ---
@@ -83,7 +83,7 @@
 **Requirements:** ANNOT-01, ANNOT-02, ANNOT-03, ANNOT-04, ANNOT-05, ANNOT-06, ANNOT-07, ANNOT-08, ANNOT-09, ANNOT-10, SESSION-01, SESSION-02, SESSION-03
 
 **Plans:**
-1. Annotation CRUD — CSS anchor `<dialog>`, file picker, clipboard paste, image/text/link/audio types, non-overlap enforcement, edit/move/remove
+2/2 plans complete
 2. Session persistence — atomic JSON save every 30s, save-on-close, restore on launch (audio path, transcript, annotations)
 
 **Success Criteria:**
