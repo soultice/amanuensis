@@ -10,7 +10,7 @@
 
 | # | Phase | Goal | Requirements | Plans |
 |---|---|---|---|---|
-| 1 | Foundation | Working Electron app with Python sidecar connected and health-checked | AUDIO-02 partial, structural | 1 |
+| 1 | Foundation | Working Electron app with Python sidecar connected and health-checked | Complete    | 2026-04-12 |
 | 2 | Audio & Transcription | User can record audio and receive a word-level transcript | AUDIO-01–05, TRANS-01–04 | 2 |
 | 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | NAV-01–03 | 1 |
 | 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | ANNOT-01–10, SESSION-01–03 | 2 |
@@ -25,7 +25,7 @@
 **Requirements:** *(structural — no user-facing requirements yet; enables all others)*
 
 **Plans:**
-1. Electron + Vue 3 scaffold (electron-vite, TypeScript, Pinia, preload contextBridge, contextIsolation)
+2/2 plans complete
    - Python FastAPI sidecar (faster-whisper installed, `/health` endpoint, port discovery)
    - Sidecar spawn on app start, health polling, graceful shutdown
 
