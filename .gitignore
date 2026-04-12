@@ -1,3 +1,7 @@
+dist-sidecar/
+build-sidecar/
+release/
+
 # Dependencies
 node_modules/
 out/

@@ -18,6 +18,10 @@ declare global {
       restartApp(): Promise<void>
       onModelProgress(cb: (progress: number) => void): () => void
       onSidecarError(cb: (err: string) => void): () => void
+      exportMarkdown(payload: {
+        markdown: string
+        assetsToCopy: Array<{ src: string; dest: string }>
+      }): Promise<{ canceled: boolean; filePath?: string }>
       // Phase 4 — File picker & assets
       openFile(filters: Array<{ name: string; extensions: string[] }>): Promise<string | null>
       copyAsset(srcPath: string): Promise<string>

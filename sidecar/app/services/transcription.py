@@ -52,7 +52,7 @@ def transcribe_file(model_dir: Path, audio_path: Path) -> dict:
     """
     model = get_model(model_dir)
 
-    segments, info = model.transcribe(
+    segments_result, info = model.transcribe(
         str(audio_path),
         word_timestamps=True,
         language=None,      # auto-detect (TRANS-02)
@@ -60,9 +60,16 @@ def transcribe_file(model_dir: Path, audio_path: Path) -> dict:
         vad_filter=True,    # skip silence regions
     )
 
+    segments_list = []
     words = []
     word_id = 0
-    for segment in segments:
+    for seg_idx, segment in enumerate(segments_result):
+        segments_list.append({
+            "id": seg_idx,
+            "start": round(segment.start, 3),
+            "end": round(segment.end, 3),
+            "text": segment.text.strip(),
+        })
         if segment.words:
             for w in segment.words:
                 words.append({
@@ -71,11 +78,13 @@ def transcribe_file(model_dir: Path, audio_path: Path) -> dict:
                     "start": round(w.start, 3),
                     "end": round(w.end, 3),
                     "probability": round(w.probability, 3),
+                    "segmentId": seg_idx,
                 })
                 word_id += 1
 
     return {
         "words": words,
+        "segments": segments_list,
         "language": info.language,
         "duration": round(info.duration, 2),
     }

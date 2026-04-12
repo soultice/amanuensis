@@ -107,6 +107,36 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
+// ---- Markdown export (Phase 5) ----
+ipcMain.handle('export:markdown', async (_event, payload: {
+  markdown: string
+  assetsToCopy: Array<{ src: string; dest: string }>
+}) => {
+  const result = await dialog.showSaveDialog({
+    title: 'Export Transcript',
+    defaultPath: 'transcript.md',
+    filters: [{ name: 'Markdown', extensions: ['md'] }],
+  })
+  if (result.canceled || !result.filePath) return { canceled: true }
+
+  const mdPath = result.filePath
+  const outputDir = path.dirname(mdPath)
+  const assetsDir = path.join(outputDir, 'assets')
+
+  await fsPromises.mkdir(assetsDir, { recursive: true })
+  await fsPromises.writeFile(mdPath, payload.markdown, 'utf-8')
+
+  for (const { src, dest } of payload.assetsToCopy) {
+    try {
+      await fsPromises.copyFile(src, path.join(assetsDir, dest))
+    } catch (err) {
+      console.error('[export] Failed to copy asset:', src, err)
+    }
+  }
+
+  return { canceled: false, filePath: mdPath }
+})
+
 // ---- File picker & asset management (Phase 4) ----
 ipcMain.handle('dialog:openFile', async (_event, filters: Array<{ name: string; extensions: string[] }>) => {
   const result = await dialog.showOpenDialog({ properties: ['openFile'], filters })

@@ -1,5 +1,18 @@
 <template>
   <div class="annotation-panel">
+    <!-- Panel header with export button (D-01, D-03) -->
+    <div class="annotation-panel__header">
+      <span class="annotation-panel__title">Annotations</span>
+      <button
+        class="export-btn"
+        :disabled="!transcriptStore.hasTranscript"
+        :title="transcriptStore.hasTranscript ? 'Export transcript as Markdown' : 'Transcribe first to enable export'"
+        @click="exportMarkdown"
+      >
+        ↓ Export .md
+      </button>
+    </div>
+
     <div v-if="annotationStore.sortedAnnotations.length === 0" class="annotation-panel__empty">
       <p>Select words and click <strong>+ Annotate</strong> to add annotations.</p>
     </div>
@@ -64,10 +77,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAnnotationStore } from '../stores/annotation'
+import { useTranscriptStore } from '../stores/transcript'
 import type { Annotation, AnnotationType } from '../stores/annotation'
 import AnnotationDialog from './AnnotationDialog.vue'
 
 const annotationStore = useAnnotationStore()
+const transcriptStore = useTranscriptStore()
 const editingAnnotation = ref<Annotation | null>(null)
 const dragActiveId = ref<string | null>(null)
 const assetsDir = ref<string>('')
@@ -93,21 +108,98 @@ function onDragStart(event: DragEvent, annotationId: string): void {
   event.dataTransfer!.setData('text/plain', annotationId)
   dragActiveId.value = annotationId
 }
+
+async function exportMarkdown(): Promise<void> {
+  if (!transcriptStore.hasTranscript) return
+
+  const words = transcriptStore.words
+  const segments = transcriptStore.segments
+  const annotations = annotationStore.sortedAnnotations
+  const assetsDir = await window.api.getAssetsDir()
+
+  const wordMarker = new Map<number, string>()
+  const assetsToCopy: Array<{ src: string; dest: string }> = []
+  const footnotes: string[] = []
+  let fnNum = 0
+
+  for (const ann of annotations) {
+    let marker = ''
+    if (ann.type === 'image' && ann.assetFilename) {
+      marker = `![](assets/${ann.assetFilename})`
+      assetsToCopy.push({ src: `${assetsDir}/${ann.assetFilename}`, dest: ann.assetFilename })
+    } else if (ann.type === 'link') {
+      marker = `[${ann.content}](${ann.content})`
+    } else {
+      fnNum++
+      if (ann.type === 'audio' && ann.assetFilename) {
+        footnotes.push(`[^${fnNum}]: \uD83C\uDFB5 ${ann.assetFilename}`)
+        assetsToCopy.push({ src: `${assetsDir}/${ann.assetFilename}`, dest: ann.assetFilename })
+      } else {
+        footnotes.push(`[^${fnNum}]: ${ann.content}`)
+      }
+      marker = `[^${fnNum}]`
+    }
+    wordMarker.set(ann.wordEndIdx, marker)
+  }
+
+  const lines: string[] = ['# Transcript', '']
+  for (const segment of segments) {
+    const segWords = words.filter(w => w.segmentId === segment.id)
+    const line = segWords.map(w => w.word + (wordMarker.get(w.id) ?? '')).join('').trim()
+    if (line) lines.push(line)
+  }
+
+  if (footnotes.length > 0) {
+    lines.push('', '---', '')
+    footnotes.forEach(f => lines.push(f))
+  }
+
+  const markdown = lines.join('\n')
+  const result = await window.api.exportMarkdown({ markdown, assetsToCopy })
+  if (!result.canceled) {
+    console.log('[export] Written to:', result.filePath)
+  }
+}
 </script>
 
 <style scoped>
 .annotation-panel {
-  padding: 12px 16px;
+  padding: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   height: 100%;
 }
+.annotation-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  background: white;
+}
+.annotation-panel__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+.export-btn {
+  padding: 4px 12px;
+  background: #1a56db;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.export-btn:hover:not(:disabled) { background: #1345b7; }
 .annotation-panel__empty {
   color: #9ca3af;
   font-size: 0.8rem;
-  padding: 8px 0;
+  padding: 12px 16px;
 }
 .annotation-card {
   border: 1px solid #e5e7eb;

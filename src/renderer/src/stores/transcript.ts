@@ -7,6 +7,14 @@ export interface Word {
   start: number
   end: number
   probability: number
+  segmentId: number
+}
+
+export interface Segment {
+  id: number
+  start: number
+  end: number
+  text: string
 }
 
 export type TranscriptState = 'empty' | 'transcribing' | 'complete' | 'error'
@@ -15,6 +23,7 @@ export const useTranscriptStore = defineStore('transcript', {
   state: () => ({
     transcriptState: 'empty' as TranscriptState,
     words: [] as Word[],
+    segments: [] as Segment[],
     language: '',
     duration: 0,
     error: null as string | null,
@@ -39,6 +48,7 @@ export const useTranscriptStore = defineStore('transcript', {
 
       this.transcriptState = 'transcribing'
       this.words = []
+      this.segments = []
       this.language = ''
       this.duration = 0
       this.error = null
@@ -61,11 +71,13 @@ export const useTranscriptStore = defineStore('transcript', {
 
         const data = (await res.json()) as {
           words: Word[]
+          segments: Segment[]
           language: string
           duration: number
         }
 
         this.words = data.words
+        this.segments = data.segments ?? []
         this.language = data.language
         this.duration = data.duration
         this.transcriptState = 'complete'
@@ -99,6 +111,7 @@ export const useTranscriptStore = defineStore('transcript', {
       this._stopPolling()
       this.transcriptState = 'empty'
       this.words = []
+      this.segments = []
       this.language = ''
       this.duration = 0
       this.error = null

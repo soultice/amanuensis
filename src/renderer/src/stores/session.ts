@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { useTranscriptStore } from './transcript'
 import { useAnnotationStore } from './annotation'
 import { useRecordingStore } from './recording'
-import type { Word } from './transcript'
+import type { Word, Segment } from './transcript'
 import type { Annotation } from './annotation'
 
 interface SessionData {
@@ -13,6 +13,7 @@ interface SessionData {
     language: string
     duration: number
     words: Word[]
+    segments: Segment[]
   } | null
   annotations: Annotation[]
 }
@@ -42,6 +43,7 @@ export const useSessionStore = defineStore('session', {
               language: transcriptStore.language,
               duration: transcriptStore.duration,
               words: transcriptStore.words,
+              segments: transcriptStore.segments,
             }
           : null,
         annotations: annotationStore.annotations,
@@ -73,6 +75,7 @@ export const useSessionStore = defineStore('session', {
         // Restore transcript
         if (data.transcript) {
           transcriptStore.words = data.transcript.words
+          transcriptStore.segments = data.transcript.segments ?? []
           transcriptStore.language = data.transcript.language
           transcriptStore.duration = data.transcript.duration
           transcriptStore.transcriptState = 'complete'

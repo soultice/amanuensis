@@ -81,6 +81,53 @@ sidecar/                  Python FastAPI backend
 .planning/                GSD planning artifacts
 ```
 
+## Packaging
+
+Building distributable installers requires building the Python sidecar binary first (PyInstaller), then packaging the Electron app (electron-builder).
+
+### Additional Prerequisites
+
+```bash
+cd sidecar
+poetry add --dev pyinstaller
+poetry install
+```
+
+### Build Steps
+
+**Build everything at once:**
+
+```bash
+npm run build:all
+```
+
+Or step by step:
+
+```bash
+# 1. Build Python sidecar binary (platform-specific)
+npm run build:sidecar   # produces dist-sidecar/amanuensis-sidecar/
+
+# 2. Build renderer (Vite)
+npm run build
+
+# 3. Package Electron app
+npm run build:electron   # produces release/
+```
+
+### Output
+
+| Platform | File | Location |
+|---|---|---|
+| macOS | `.dmg` | `release/` |
+| Windows | `.exe` (NSIS) | `release/` |
+| Linux | `.AppImage` | `release/` |
+
+### Notes
+
+- **Whisper model (~3 GB) is not bundled.** It is downloaded on first launch via the onboarding screen.
+- Build each platform's binary on the target platform (macOS binary on macOS, etc.).
+- For CI, use GitHub Actions with separate jobs per platform.
+
 ## Type Checking
 
 ```bash

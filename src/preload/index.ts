@@ -38,6 +38,13 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener('sidecar:error', handler)
   },
 
+  // Phase 5 — Markdown export
+  exportMarkdown: (payload: {
+    markdown: string
+    assetsToCopy: Array<{ src: string; dest: string }>
+  }): Promise<{ canceled: boolean; filePath?: string }> =>
+    ipcRenderer.invoke('export:markdown', payload),
+
   // Phase 4 — File picker & assets
   openFile: (filters: Array<{ name: string; extensions: string[] }>): Promise<string | null> =>
     ipcRenderer.invoke('dialog:openFile', filters),
