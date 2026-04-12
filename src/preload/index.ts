@@ -36,5 +36,31 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (_e: Electron.IpcRendererEvent, e: string): void => cb(e)
     ipcRenderer.on('sidecar:error', handler)
     return () => ipcRenderer.removeListener('sidecar:error', handler)
+  },
+
+  // Phase 4 — File picker & assets
+  openFile: (filters: Array<{ name: string; extensions: string[] }>): Promise<string | null> =>
+    ipcRenderer.invoke('dialog:openFile', filters),
+  copyAsset: (srcPath: string): Promise<string> =>
+    ipcRenderer.invoke('session:copyAsset', srcPath),
+  saveBlobAsset: (buffer: ArrayBuffer, ext: string): Promise<string> =>
+    ipcRenderer.invoke('session:saveBlobAsset', Buffer.from(buffer), ext),
+  getAssetsDir: (): Promise<string> =>
+    ipcRenderer.invoke('session:getAssetsDir'),
+
+  // Phase 4 — Session persistence
+  saveSession: (data: string): Promise<void> =>
+    ipcRenderer.invoke('session:save', data),
+  loadSession: (): Promise<string | null> =>
+    ipcRenderer.invoke('session:load'),
+  fileExists: (filePath: string): Promise<boolean> =>
+    ipcRenderer.invoke('fs:exists', filePath),
+  saveAndQuit: (): Promise<void> =>
+    ipcRenderer.invoke('session:save-complete'),
+
+  onSaveAndQuit: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('app:save-and-quit', handler)
+    return () => ipcRenderer.removeListener('app:save-and-quit', handler)
   }
 })

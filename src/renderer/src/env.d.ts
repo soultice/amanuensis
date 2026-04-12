@@ -18,6 +18,17 @@ declare global {
       restartApp(): Promise<void>
       onModelProgress(cb: (progress: number) => void): () => void
       onSidecarError(cb: (err: string) => void): () => void
+      // Phase 4 — File picker & assets
+      openFile(filters: Array<{ name: string; extensions: string[] }>): Promise<string | null>
+      copyAsset(srcPath: string): Promise<string>
+      saveBlobAsset(buffer: ArrayBuffer, ext: string): Promise<string>
+      getAssetsDir(): Promise<string>
+      // Phase 4 — Session persistence
+      saveSession(data: string): Promise<void>
+      loadSession(): Promise<string | null>
+      fileExists(filePath: string): Promise<boolean>
+      saveAndQuit(): Promise<void>
+      onSaveAndQuit(cb: () => void): () => void
     }
   }
 }

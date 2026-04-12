@@ -1,8 +1,10 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
+import path from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { startSidecar, killSidecar, getSidecarPort, getSidecarStatus } from './sidecar'
-import { existsSync } from 'fs'
+import { existsSync, promises as fsPromises } from 'fs'
+import crypto from 'crypto'
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -105,5 +107,83 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => killSidecar())
+// ---- File picker & asset management (Phase 4) ----
+ipcMain.handle('dialog:openFile', async (_event, filters: Array<{ name: string; extensions: string[] }>) => {
+  const result = await dialog.showOpenDialog({ properties: ['openFile'], filters })
+  return result.canceled ? null : result.filePaths[0] ?? null
+})
+
+ipcMain.handle('session:copyAsset', async (_event, srcPath: string) => {
+  const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
+  await fsPromises.mkdir(assetsDir, { recursive: true })
+  const ext = path.extname(srcPath)
+  const filename = `${crypto.randomUUID()}${ext}`
+  await fsPromises.copyFile(srcPath, join(assetsDir, filename))
+  return filename
+})
+
+ipcMain.handle('session:saveBlobAsset', async (_event, buffer: Buffer, ext: string) => {
+  const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
+  await fsPromises.mkdir(assetsDir, { recursive: true })
+  const filename = `${crypto.randomUUID()}.${ext}`
+  await fsPromises.writeFile(join(assetsDir, filename), buffer)
+  return filename
+})
+
+ipcMain.handle('session:getAssetsDir', async () => {
+  const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
+  await fsPromises.mkdir(assetsDir, { recursive: true })
+  return assetsDir
+})
+
+// ---- Session persistence (Phase 4) ----
+ipcMain.handle('session:save', async (_event, data: string) => {
+  const sessionDir = join(app.getPath('userData'), 'sessions')
+  await fsPromises.mkdir(sessionDir, { recursive: true })
+  const sessionPath = join(sessionDir, 'current.json')
+  const tmpPath = join(sessionDir, 'current.json.tmp')
+  await fsPromises.writeFile(tmpPath, data, 'utf-8')
+  let retries = 3
+  while (retries > 0) {
+    try {
+      await fsPromises.rename(tmpPath, sessionPath)
+      break
+    } catch (err: any) {
+      if (err.code === 'EPERM' && retries > 1) {
+        await new Promise((r) => setTimeout(r, 50))
+        retries--
+      } else { throw err }
+    }
+  }
+})
+
+ipcMain.handle('session:load', async () => {
+  const sessionPath = join(app.getPath('userData'), 'sessions', 'current.json')
+  try { return await fsPromises.readFile(sessionPath, 'utf-8') } catch { return null }
+})
+
+ipcMain.handle('fs:exists', (_event, filePath: string) => existsSync(filePath))
+
+ipcMain.handle('session:save-complete', () => {
+  killSidecar()
+  app.quit()
+})
+
+// Save-on-close: signal renderer then allow quit
+let isQuitting = false
+app.on('before-quit', async (event) => {
+  if (!isQuitting) {
+    event.preventDefault()
+    isQuitting = true
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) {
+      win.webContents.send('app:save-and-quit')
+      setTimeout(() => { killSidecar(); app.quit() }, 3000)
+    } else {
+      killSidecar(); app.quit()
+    }
+  } else {
+    killSidecar()
+  }
+})
 app.on('will-quit', () => killSidecar())
