@@ -15,6 +15,7 @@
 | 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | Complete    | 2026-04-12 |
 | 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | Complete    | 2026-04-12 |
 | 5 | Export & Packaging | User can export Markdown docs and install the app | EXPORT-01–05 | 2 |
+| 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | *(gap-closure)* | 1 |
 
 ---
 
@@ -155,6 +156,18 @@
 ---
 *Roadmap created: 2026-04-12*
 
-## Backlog
+## Phase 6: Bug Fixing
 
-- [ ] **Phase 999.1**: Bug fixing round to make the app functional end-to-end
+**Goal:** Audit the app end-to-end for runtime bugs across all phases and fix them so the app is functionally usable: device selection, recording, transcription, word navigation, annotation CRUD, session persistence, and export.
+
+**Requirements:** *(gap-closure — no new requirements, validates existing phases 1–5)*
+
+**Plans:**
+1. Bug triage and fixes — run the app, identify and resolve runtime issues across all features
+
+**Success Criteria:**
+1. App launches without errors
+2. Recording and transcription work end-to-end
+3. Word click-to-seek and selection work in the transcript
+4. Annotations can be created, edited, and removed
+5. Session saves and restores correctly across relaunches
