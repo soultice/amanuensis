@@ -22,9 +22,9 @@
 
 ### Transcript Navigation
 
-- [ ] **NAV-01**: User can click a word in the transcript to seek the audio playback to that word's timestamp
-- [ ] **NAV-02**: The current word is highlighted in the transcript during audio playback
-- [ ] **NAV-03**: User can select a range of words in the transcript to use as an annotation target
+- [x] **NAV-01**: User can click a word in the transcript to seek the audio playback to that word's timestamp
+- [x] **NAV-02**: The current word is highlighted in the transcript during audio playback
+- [x] **NAV-03**: User can select a range of words in the transcript to use as an annotation target
 
 ### Annotations
 
@@ -85,9 +85,9 @@
 | TRANS-02 | Phase 2 | Complete |
 | TRANS-03 | Phase 2 | Complete |
 | TRANS-04 | Phase 2 | Complete |
-| NAV-01 | Phase 3 | Pending |
-| NAV-02 | Phase 3 | Pending |
-| NAV-03 | Phase 3 | Pending |
+| NAV-01 | Phase 3 | Complete |
+| NAV-02 | Phase 3 | Complete |
+| NAV-03 | Phase 3 | Complete |
 | ANNOT-01 | Phase 4 | Pending |
 | ANNOT-02 | Phase 4 | Pending |
 | ANNOT-03 | Phase 4 | Pending |

@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | 1 | Foundation | Working Electron app with Python sidecar connected and health-checked | Complete    | 2026-04-12 |
 | 2 | Audio & Transcription | User can record audio and receive a word-level transcript | Complete    | 2026-04-12 |
-| 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | NAV-01–03 | 1 |
+| 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | Complete    | 2026-04-12 |
 | 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | ANNOT-01–10, SESSION-01–03 | 2 |
 | 5 | Export & Packaging | User can export Markdown docs and install the app | EXPORT-01–05 | 2 |
 
@@ -65,7 +65,7 @@
 **Requirements:** NAV-01, NAV-02, NAV-03
 
 **Plans:**
-1. WaveSurfer integration, word-span rendering, click-to-seek, playback word highlight, drag-to-select word range, WaveSurfer region highlight for selection
+2/2 plans complete
 
 **Success Criteria:**
 1. Transcript words are rendered as individually clickable spans
