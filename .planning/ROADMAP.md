@@ -14,7 +14,7 @@
 | 2 | Audio & Transcription | User can record audio and receive a word-level transcript | Complete    | 2026-04-12 |
 | 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | Complete    | 2026-04-12 |
 | 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | Complete    | 2026-04-12 |
-| 5 | Export & Packaging | User can export Markdown docs and install the app | EXPORT-01–05 | 2 |
+| 5 | Export & Packaging | User can export Markdown docs and install the app | Complete    | 2026-04-12 |
 | 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | *(gap-closure)* | 1 |
 
 ---
@@ -104,7 +104,7 @@
 **Requirements:** EXPORT-01, EXPORT-02, EXPORT-03, EXPORT-04, EXPORT-05
 
 **Plans:**
-1. Markdown export — annotation injection at word-range position, image copy to `assets/`, hyperlink formatting, footnote formatting, native save dialog
+2/2 plans complete
 2. Cross-platform packaging — PyInstaller sidecar binary, electron-builder config, macOS entitlements, CI build for macOS/Windows/Linux
 
 **Success Criteria:**

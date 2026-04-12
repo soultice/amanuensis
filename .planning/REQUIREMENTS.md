@@ -41,11 +41,11 @@
 
 ### Export
 
-- [ ] **EXPORT-01**: User can export the annotated transcript as a `.md` file with an adjacent `assets/` folder
-- [ ] **EXPORT-02**: Image annotations are exported as `![](assets/filename)` at their position in the transcript
-- [ ] **EXPORT-03**: Hyperlink annotations are exported as `[text](url)` at their position in the transcript
-- [ ] **EXPORT-04**: Other annotation types (text, audio) are exported as Markdown footnotes at their position in the transcript
-- [ ] **EXPORT-05**: Annotations are injected at their word-range position in the exported document, in order
+- [x] **EXPORT-01**: User can export the annotated transcript as a `.md` file with an adjacent `assets/` folder
+- [x] **EXPORT-02**: Image annotations are exported as `![](assets/filename)` at their position in the transcript
+- [x] **EXPORT-03**: Hyperlink annotations are exported as `[text](url)` at their position in the transcript
+- [x] **EXPORT-04**: Other annotation types (text, audio) are exported as Markdown footnotes at their position in the transcript
+- [x] **EXPORT-05**: Annotations are injected at their word-range position in the exported document, in order
 
 ### Session
 
@@ -98,11 +98,11 @@
 | ANNOT-08 | Phase 4 | Complete |
 | ANNOT-09 | Phase 4 | Complete |
 | ANNOT-10 | Phase 4 | Complete |
-| EXPORT-01 | Phase 5 | Pending |
-| EXPORT-02 | Phase 5 | Pending |
-| EXPORT-03 | Phase 5 | Pending |
-| EXPORT-04 | Phase 5 | Pending |
-| EXPORT-05 | Phase 5 | Pending |
+| EXPORT-01 | Phase 5 | Complete |
+| EXPORT-02 | Phase 5 | Complete |
+| EXPORT-03 | Phase 5 | Complete |
+| EXPORT-04 | Phase 5 | Complete |
+| EXPORT-05 | Phase 5 | Complete |
 | SESSION-01 | Phase 4 | Complete |
 | SESSION-02 | Phase 4 | Complete |
 | SESSION-03 | Phase 4 | Complete |
