@@ -1,6 +1,10 @@
 <template>
   <div class="app-shell">
-    <AppToolbar class="app-shell__toolbar" />
+    <AppToolbar
+      class="app-shell__toolbar"
+      :is-transcribing="transcriptStore ? transcriptStore.isTranscribing : false"
+      @transcribe="handleTranscribe"
+    />
     <main class="app-shell__main">
       <section class="app-shell__waveform">
         <WaveformPanel />
@@ -17,11 +21,23 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+import { useRecordingStore } from '../stores/recording'
 import AppToolbar from '../components/AppToolbar.vue'
 import WaveformPanel from '../components/WaveformPanel.vue'
 import TranscriptPanel from '../components/TranscriptPanel.vue'
 import AnnotationPanel from '../components/AnnotationPanel.vue'
 import AppStatusBar from '../components/AppStatusBar.vue'
+
+const recordingStore = useRecordingStore()
+
+// transcriptStore will be added in Plan 02-02; stub until then
+const transcriptStore = ref<{ isTranscribing: boolean; transcribe: (b: Blob) => Promise<void> } | null>(null)
+
+async function handleTranscribe(): Promise<void> {
+  if (!recordingStore.audioBlob || !transcriptStore.value) return
+  await transcriptStore.value.transcribe(recordingStore.audioBlob)
+}
 </script>
 
 <style scoped>

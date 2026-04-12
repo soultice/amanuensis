@@ -25,6 +25,25 @@
     "@vueuse/core": "^11.3.0",
     "vue": "^3.5.13"
   },
+  "build": {
+    "appId": "com.amanuensis.app",
+    "productName": "Amanuensis",
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Amanuensis needs microphone access to record audio for transcription."
+      }
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^2.0.0",
     "@electron-toolkit/eslint-config-ts": "^2.0.0",
