@@ -154,3 +154,7 @@
 
 ---
 *Roadmap created: 2026-04-12*
+
+## Backlog
+
+- [ ] **Phase 999.1**: Bug fixing round to make the app functional end-to-end
