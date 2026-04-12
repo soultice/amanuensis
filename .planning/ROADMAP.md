@@ -11,7 +11,7 @@
 | # | Phase | Goal | Requirements | Plans |
 |---|---|---|---|---|
 | 1 | Foundation | Working Electron app with Python sidecar connected and health-checked | Complete    | 2026-04-12 |
-| 2 | Audio & Transcription | User can record audio and receive a word-level transcript | AUDIO-01–05, TRANS-01–04 | 2 |
+| 2 | Audio & Transcription | User can record audio and receive a word-level transcript | Complete    | 2026-04-12 |
 | 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | NAV-01–03 | 1 |
 | 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | ANNOT-01–10, SESSION-01–03 | 2 |
 | 5 | Export & Packaging | User can export Markdown docs and install the app | EXPORT-01–05 | 2 |
@@ -45,7 +45,7 @@
 **Requirements:** AUDIO-01, AUDIO-02, AUDIO-03, AUDIO-04, AUDIO-05, TRANS-01, TRANS-02, TRANS-03, TRANS-04
 
 **Plans:**
-1. Audio capture — device enumeration UI, MediaRecorder recording, level meter, playback
+2/2 plans complete
 2. Transcription pipeline — WebM→WAV conversion in sidecar, faster-whisper large-v3 transcription, word timestamps, progress SSE, transcript display
 
 **Success Criteria:**

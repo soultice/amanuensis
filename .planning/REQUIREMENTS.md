@@ -7,18 +7,18 @@
 
 ### Audio Capture
 
-- [ ] **AUDIO-01**: User can view all available audio input devices and select one before recording
-- [ ] **AUDIO-02**: User can start a recording via a dedicated button
-- [ ] **AUDIO-03**: User can stop a recording via a dedicated button
-- [ ] **AUDIO-04**: App displays a real-time audio level meter while recording is active
-- [ ] **AUDIO-05**: User can play back the recorded audio
+- [x] **AUDIO-01**: User can view all available audio input devices and select one before recording
+- [x] **AUDIO-02**: User can start a recording via a dedicated button
+- [x] **AUDIO-03**: User can stop a recording via a dedicated button
+- [x] **AUDIO-04**: App displays a real-time audio level meter while recording is active
+- [x] **AUDIO-05**: User can play back the recorded audio
 
 ### Transcription
 
-- [ ] **TRANS-01**: App automatically transcribes the recording after the user stops it, using the local faster-whisper large-v3 model
-- [ ] **TRANS-02**: Transcription uses automatic language detection (no manual language selection required)
-- [ ] **TRANS-03**: App displays a transcription progress indicator while transcription is running
-- [ ] **TRANS-04**: User can view the full transcribed text after transcription completes
+- [x] **TRANS-01**: App automatically transcribes the recording after the user stops it, using the local faster-whisper large-v3 model
+- [x] **TRANS-02**: Transcription uses automatic language detection (no manual language selection required)
+- [x] **TRANS-03**: App displays a transcription progress indicator while transcription is running
+- [x] **TRANS-04**: User can view the full transcribed text after transcription completes
 
 ### Transcript Navigation
 
@@ -76,15 +76,15 @@
 
 | Requirement | Phase | Status |
 |---|---|---|
-| AUDIO-01 | Phase 2 | Pending |
-| AUDIO-02 | Phase 2 | Pending |
-| AUDIO-03 | Phase 2 | Pending |
-| AUDIO-04 | Phase 2 | Pending |
-| AUDIO-05 | Phase 2 | Pending |
-| TRANS-01 | Phase 2 | Pending |
-| TRANS-02 | Phase 2 | Pending |
-| TRANS-03 | Phase 2 | Pending |
-| TRANS-04 | Phase 2 | Pending |
+| AUDIO-01 | Phase 2 | Complete |
+| AUDIO-02 | Phase 2 | Complete |
+| AUDIO-03 | Phase 2 | Complete |
+| AUDIO-04 | Phase 2 | Complete |
+| AUDIO-05 | Phase 2 | Complete |
+| TRANS-01 | Phase 2 | Complete |
+| TRANS-02 | Phase 2 | Complete |
+| TRANS-03 | Phase 2 | Complete |
+| TRANS-04 | Phase 2 | Complete |
 | NAV-01 | Phase 3 | Pending |
 | NAV-02 | Phase 3 | Pending |
 | NAV-03 | Phase 3 | Pending |
