@@ -1,147 +1,116 @@
 # Requirements: Amanuensis
 
 **Defined:** 2026-04-12
-**Core Value:** A complete, reliable pipeline from spoken word to annotated markdown document — every step must actually work or the tool is useless.
+**Core Value:** Turn a spoken recording into a shareable, annotated Markdown document with zero friction — fast enough that it doesn't interrupt the user's workflow.
 
 ## v1 Requirements
 
-### Audio Device
+### Audio Capture
 
-- [ ] **ADEV-01**: User can view all available system audio input devices in a dropdown
-- [ ] **ADEV-02**: User can select one input device to record from; selection persists across sessions
-
-### Recording
-
-- [ ] **REC-01**: User can start an audio recording via a dedicated button
-- [ ] **REC-02**: User can stop an active audio recording via a dedicated button
-- [ ] **REC-03**: User sees a live visual indicator (level meter or waveform) confirming audio is being captured during recording
-
-### Model
-
-- [ ] **MOD-01**: App downloads the Whisper large model in the background on first launch
-- [ ] **MOD-02**: UI shows model status at all times: Not Downloaded / Downloading (X%) / Ready / Error
-- [ ] **MOD-03**: UI remains fully usable while model is downloading
+- [ ] **AUDIO-01**: User can view all available audio input devices and select one before recording
+- [ ] **AUDIO-02**: User can start a recording via a dedicated button
+- [ ] **AUDIO-03**: User can stop a recording via a dedicated button
+- [ ] **AUDIO-04**: App displays a real-time audio level meter while recording is active
+- [ ] **AUDIO-05**: User can play back the recorded audio
 
 ### Transcription
 
-- [ ] **TRNS-01**: App transcribes the recorded audio using the local Whisper large model after recording stops
-- [ ] **TRNS-02**: Transcription uses automatic language detection
-- [ ] **TRNS-03**: Transcription produces word-level timestamps (each word has a start and end time in ms)
-- [ ] **TRNS-04**: User can view the full transcribed text
+- [ ] **TRANS-01**: App automatically transcribes the recording after the user stops it, using the local faster-whisper large-v3 model
+- [ ] **TRANS-02**: Transcription uses automatic language detection (no manual language selection required)
+- [ ] **TRANS-03**: App displays a transcription progress indicator while transcription is running
+- [ ] **TRANS-04**: User can view the full transcribed text after transcription completes
 
-### Transcript-Audio Sync
+### Transcript Navigation
 
-- [ ] **SYNC-01**: User can click a word in the transcript and see the corresponding position highlighted on the audio timeline
-- [ ] **SYNC-02**: The audio timeline shows a waveform with a playback cursor
+- [ ] **NAV-01**: User can click a word in the transcript to seek the audio playback to that word's timestamp
+- [ ] **NAV-02**: The current word is highlighted in the transcript during audio playback
+- [ ] **NAV-03**: User can select a range of words in the transcript to use as an annotation target
 
 ### Annotations
 
-- [ ] **ANN-01**: User can select a time range in the transcript and attach an annotation to it
-- [ ] **ANN-02**: Annotation types: image (from file picker), audio/voice comment (recorded clip or file), clipboard content (text, URL, or image auto-detected)
-- [ ] **ANN-03**: User can edit an existing annotation's content
-- [ ] **ANN-04**: User can move an annotation to a different time range
-- [ ] **ANN-05**: User can remove an annotation
-- [ ] **ANN-06**: Annotations cannot overlap — the app rejects a new annotation that overlaps an existing one
-
-### Annotation Dialog
-
-- [ ] **DLG-01**: Annotation dialog opens as a `<dialog>` element using CSS anchor positioning, anchored to the selected text range
-- [ ] **DLG-02**: Dialog provides clipboard paste input (auto-detects text, URL, or image)
-- [ ] **DLG-03**: Dialog provides a file picker for image and audio file attachment
+- [ ] **ANNOT-01**: User can attach an image annotation to a selected word range (via file picker)
+- [ ] **ANNOT-02**: User can attach an image annotation to a selected word range (via clipboard paste)
+- [ ] **ANNOT-03**: User can attach a text or hyperlink annotation to a selected word range (via clipboard paste)
+- [ ] **ANNOT-04**: User can attach an audio clip annotation to a selected word range (via file picker)
+- [ ] **ANNOT-05**: User can edit an existing annotation
+- [ ] **ANNOT-06**: User can move an annotation to a different word range
+- [ ] **ANNOT-07**: User can remove an annotation
+- [ ] **ANNOT-08**: Annotations cannot overlap — the app prevents selecting a word range that is already covered by an existing annotation
+- [ ] **ANNOT-09**: Annotation creation and editing uses a CSS-anchored `<dialog>` element that opens adjacent to the selected word range
+- [ ] **ANNOT-10**: The annotation dialog supports inserting content from clipboard and from a file picker
 
 ### Export
 
-- [ ] **EXP-01**: User can export the annotated transcript as a markdown file via a save dialog
-- [ ] **EXP-02**: Annotations are injected at their text position in the markdown output
-- [ ] **EXP-03**: Image annotations render as `![](path/to/image.png)` in markdown
-- [ ] **EXP-04**: Voice comment / audio annotations render as `[voice comment](path/to/comment.wav)` in markdown
-- [ ] **EXP-05**: Clipboard text annotations render as footnotes (`[^1]` inline + definition at end)
-- [ ] **EXP-06**: URL annotations render as `[text](https://url)` hyperlinks in markdown
-- [ ] **EXP-07**: Clipboard image annotations render as `![](path/to/image.png)` in markdown
+- [ ] **EXPORT-01**: User can export the annotated transcript as a `.md` file with an adjacent `assets/` folder
+- [ ] **EXPORT-02**: Image annotations are exported as `![](assets/filename)` at their position in the transcript
+- [ ] **EXPORT-03**: Hyperlink annotations are exported as `[text](url)` at their position in the transcript
+- [ ] **EXPORT-04**: Other annotation types (text, audio) are exported as Markdown footnotes at their position in the transcript
+- [ ] **EXPORT-05**: Annotations are injected at their word-range position in the exported document, in order
 
 ### Session
 
-- [ ] **SESS-01**: App opens to the current active session if one exists
-- [ ] **SESS-02**: If no active session exists, app shows a list of past sessions the user can reopen
-- [ ] **SESS-03**: App auto-saves session state continuously (transcript, annotations, device selection)
-- [ ] **SESS-04**: App saves session state on close; session is fully restorable on next launch
+- [ ] **SESSION-01**: App auto-saves the current session every 30 seconds using atomic file writes
+- [ ] **SESSION-02**: App saves the session when the user closes the window
+- [ ] **SESSION-03**: App restores the previous session (audio, transcript, annotations) on next launch
 
 ## v2 Requirements
 
-### Playback
-
-- **PLAY-01**: User can play back the recorded audio with a play/pause/seek controls
-- **PLAY-02**: User can adjust playback speed (0.5x, 1x, 1.5x, 2x)
-- **PLAY-03**: Transcript word highlight follows playback position in real time
-
-### Search
-
-- **SRCH-01**: User can search for a word or phrase within the transcript
-- **SRCH-02**: Search results highlight matching words in the transcript
-
-### Export
-
-- **EXP-V2-01**: User can export to additional formats (HTML, plain text)
+*(None — all features are v1)*
 
 ## Out of Scope
 
 | Feature | Reason |
-| ------- | ------ |
-| Cloud / API-based transcription | Hard requirement: local-only. Privacy and no-network-dependency. |
-| Real-time transcription during recording | Adds streaming complexity, latency, chunking. Post-recording batch transcription is correct for documentation use. |
-| Whisper model size selection | Large model only — consistency and quality requirement. |
-| Multi-user collaboration | Infrastructure, auth, sync conflicts — none of which is the product. |
-| Speaker diarization | Requires a separate pipeline (pyannote-audio); not supported by whisper-rs. |
-| In-app markdown editor | Scope creep; duplicates any text editor. Export then edit elsewhere. |
-| Video recording / screen capture | Completely different capture pipeline. |
-| Sync across devices / cloud storage | Out of scope; export the markdown file and share. |
-| Mobile platforms | Desktop only: macOS, Windows, Linux. |
+|---|---|
+| In-app screen capture | Explicitly excluded — user pastes or picks screenshots manually |
+| Multiple concurrent sessions / recording library | One session at a time; stated workflow |
+| Cloud sync or remote Whisper API | Local model only; no cloud dependency |
+| Speaker diarization | Adds ML complexity; single-speaker workflow assumed |
+| Real-time transcription (while recording) | Whisper large model too slow for streaming |
+| Smaller Whisper models | User requirement: large-v3 only |
+| Translation | Auto-detect is sufficient; translation out of scope |
+| Waveform editing (cut, splice) | Documentation tool, not a DAW |
+| Collaboration / review comments | Single-user local tool |
+| Mobile or web deployment | Desktop only |
 
 ## Traceability
 
-Requirements mapped to phases after roadmap creation.
-
 | Requirement | Phase | Status |
-| ----------- | ----- | ------ |
-| ADEV-01 | Phase 1 | Pending |
-| ADEV-02 | Phase 1 | Pending |
-| REC-01 | Phase 1 | Pending |
-| REC-02 | Phase 1 | Pending |
-| REC-03 | Phase 1 | Pending |
-| MOD-01 | Phase 2 | Pending |
-| MOD-02 | Phase 2 | Pending |
-| MOD-03 | Phase 2 | Pending |
-| TRNS-01 | Phase 2 | Pending |
-| TRNS-02 | Phase 2 | Pending |
-| TRNS-03 | Phase 2 | Pending |
-| TRNS-04 | Phase 2 | Pending |
-| SYNC-01 | Phase 2 | Pending |
-| SYNC-02 | Phase 2 | Pending |
-| ANN-01 | Phase 3 | Pending |
-| ANN-02 | Phase 3 | Pending |
-| ANN-03 | Phase 3 | Pending |
-| ANN-04 | Phase 3 | Pending |
-| ANN-05 | Phase 3 | Pending |
-| ANN-06 | Phase 3 | Pending |
-| DLG-01 | Phase 3 | Pending |
-| DLG-02 | Phase 3 | Pending |
-| DLG-03 | Phase 3 | Pending |
-| EXP-01 | Phase 3 | Pending |
-| EXP-02 | Phase 3 | Pending |
-| EXP-03 | Phase 3 | Pending |
-| EXP-04 | Phase 3 | Pending |
-| EXP-05 | Phase 3 | Pending |
-| EXP-06 | Phase 3 | Pending |
-| EXP-07 | Phase 3 | Pending |
-| SESS-01 | Phase 4 | Pending |
-| SESS-02 | Phase 4 | Pending |
-| SESS-03 | Phase 4 | Pending |
-| SESS-04 | Phase 4 | Pending |
+|---|---|---|
+| AUDIO-01 | — | Pending |
+| AUDIO-02 | — | Pending |
+| AUDIO-03 | — | Pending |
+| AUDIO-04 | — | Pending |
+| AUDIO-05 | — | Pending |
+| TRANS-01 | — | Pending |
+| TRANS-02 | — | Pending |
+| TRANS-03 | — | Pending |
+| TRANS-04 | — | Pending |
+| NAV-01 | — | Pending |
+| NAV-02 | — | Pending |
+| NAV-03 | — | Pending |
+| ANNOT-01 | — | Pending |
+| ANNOT-02 | — | Pending |
+| ANNOT-03 | — | Pending |
+| ANNOT-04 | — | Pending |
+| ANNOT-05 | — | Pending |
+| ANNOT-06 | — | Pending |
+| ANNOT-07 | — | Pending |
+| ANNOT-08 | — | Pending |
+| ANNOT-09 | — | Pending |
+| ANNOT-10 | — | Pending |
+| EXPORT-01 | — | Pending |
+| EXPORT-02 | — | Pending |
+| EXPORT-03 | — | Pending |
+| EXPORT-04 | — | Pending |
+| EXPORT-05 | — | Pending |
+| SESSION-01 | — | Pending |
+| SESSION-02 | — | Pending |
+| SESSION-03 | — | Pending |
 
 **Coverage:**
-- v1 requirements: 34 total
-- Mapped to phases: 34
-- Unmapped: 0 ✓
+- v1 requirements: 30 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 30 ⚠️
 
 ---
 *Requirements defined: 2026-04-12*
