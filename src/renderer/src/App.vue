@@ -24,6 +24,7 @@ import { onMounted, watch } from 'vue'
 import { useSidecarStore } from './stores/sidecar'
 import { useModelStore } from './stores/model'
 import { useSessionStore } from './stores/session'
+import { useThemeStore } from './stores/theme'
 import OnboardingView from './views/OnboardingView.vue'
 import SessionListView from './views/SessionListView.vue'
 import AppShellView from './views/AppShellView.vue'
@@ -32,8 +33,10 @@ import SidecarErrorDialog from './components/SidecarErrorDialog.vue'
 const sidecarStore = useSidecarStore()
 const modelStore = useModelStore()
 const sessionStore = useSessionStore()
+const themeStore = useThemeStore()
 
 onMounted(async () => {
+  themeStore.init()                   // Phase 9: apply saved theme on startup
   await sidecarStore.initialize()
   await modelStore.refresh()
   sessionStore.registerSaveOnClose()
