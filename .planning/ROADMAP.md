@@ -194,6 +194,7 @@
 
 | 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete | 2026-04-13 |
 | 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel (measure, font, rhythm) | Complete    | 2026-04-13 |
+| 10 | Packaging & Distribution | Single installer (macOS dmg / Windows exe / Linux AppImage) shipping Electron + frozen Python sidecar; model downloaded at runtime | Pending | 2026-04-13 |
 
 ---
 
@@ -238,3 +239,22 @@
 4. All interactive elements (buttons, inputs, dialogs) use the Solarized palette
 5. Session list view and onboarding view are also reskinned
 6. No regression in existing functionality — typecheck and manual smoke test pass
+
+---
+
+## Phase 10: Packaging & Distribution
+
+**Goal:** Produce a single self-contained installer per platform (macOS `.dmg`, Windows NSIS `.exe`, Linux `.AppImage`) that bundles the Electron app and the frozen Python sidecar. No Python or Node runtime required on the end-user machine. The Whisper model is excluded from the bundle and downloaded on first launch as today.
+
+**Requirements:** *(build infrastructure — no new user-facing requirements)*
+
+**Plans:**
+0/4 plans complete
+
+**Success Criteria:**
+1. `npm run build:all` completes without error on macOS ARM64
+2. The produced `.dmg` installs and launches the app successfully
+3. Sidecar starts automatically within the packaged app and `GET /health` returns 200
+4. Model download works from within the packaged app (userData path correct)
+5. No user needs Python, Node, or any runtime pre-installed
+6. GitHub Actions workflow builds and uploads the `.dmg` artifact on push to `main`
