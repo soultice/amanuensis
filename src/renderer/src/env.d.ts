@@ -17,6 +17,7 @@ declare global {
       downloadModel(): Promise<void>
       restartApp(): Promise<void>
       onModelProgress(cb: (progress: number) => void): () => void
+      onSidecarReady(cb: (port: number) => void): () => void
       onSidecarError(cb: (err: string) => void): () => void
       exportMarkdown(payload: {
         markdown: string

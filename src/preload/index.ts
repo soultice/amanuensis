@@ -32,6 +32,12 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener('model:progress', handler)
   },
 
+  onSidecarReady: (cb: (port: number) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, port: number): void => cb(port)
+    ipcRenderer.on('sidecar:ready', handler)
+    return () => ipcRenderer.removeListener('sidecar:ready', handler)
+  },
+
   onSidecarError: (cb: (err: string) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, e: string): void => cb(e)
     ipcRenderer.on('sidecar:error', handler)

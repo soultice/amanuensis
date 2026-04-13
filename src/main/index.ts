@@ -120,10 +120,21 @@ app.whenReady().then(() => {
 
   createWindow()
 
-  // Start sidecar non-blocking — SidecarErrorDialog handles failure in renderer
-  startSidecar().catch((err) => {
-    console.error('[main] Sidecar failed to start:', err)
-  })
+  // Start sidecar non-blocking — notify renderer when ready or on failure
+  startSidecar()
+    .then(() => {
+      const win = BrowserWindow.getAllWindows()[0]
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('sidecar:ready', getSidecarPort())
+      }
+    })
+    .catch((err: Error) => {
+      console.error('[main] Sidecar failed to start:', err)
+      const win = BrowserWindow.getAllWindows()[0]
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('sidecar:error', err.message)
+      }
+    })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

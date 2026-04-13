@@ -17,6 +17,15 @@ export const useSidecarStore = defineStore('sidecar', {
       this.port = await window.api.getSidecarPort()
       this.status = await window.api.getSidecarStatus()
 
+      // If already ready (fast start), nothing else needed.
+      // Otherwise wait for the main process to push the ready/error events.
+      if (this.status === 'starting') {
+        window.api.onSidecarReady((port) => {
+          this.port = port
+          this.status = 'ready'
+        })
+      }
+
       // Subscribe to future error events
       window.api.onSidecarError((err) => {
         this.status = 'error'
