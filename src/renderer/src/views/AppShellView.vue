@@ -65,23 +65,36 @@ async function handleCloseSession(): Promise<void> {
 <style scoped>
 .app-shell {
   display: grid;
-  grid-template-rows: auto 48px 1fr 24px; /* auto=warning (collapses when absent), toolbar, main, statusbar */
+  grid-template-rows: auto 48px 1fr 24px; /* row1=warning, row2=toolbar, row3=main, row4=statusbar */
   height: 100vh;
   overflow: hidden;
   background: var(--bg);
 }
+/*
+  Explicit grid-row on every direct child so auto-placement never shifts
+  items when the warning div is absent (v-if=false removes it from DOM,
+  which would otherwise push toolbar into row1, main into row2, etc.).
+*/
 .app-shell__warning {
+  grid-row: 1;
   background: var(--warn-bg);
   color: var(--warn-text);
   font-size: 0.8rem;
   padding: 6px 16px;
   border-bottom: 1px solid var(--warn-border);
 }
+.app-shell__toolbar {
+  grid-row: 2;
+}
 .app-shell__main {
+  grid-row: 3;
   display: grid;
   grid-template-rows: 180px 1fr auto;
   overflow: hidden;
   min-height: 0;
+}
+.app-shell__statusbar {
+  grid-row: 4;
 }
 .app-shell__waveform {
   border-bottom: 1px solid var(--border);
