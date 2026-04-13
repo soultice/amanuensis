@@ -31,7 +31,7 @@ function createWindow(): BrowserWindow {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:*; img-src 'self' data: blob: asset:; media-src 'self' blob: asset:"
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* blob: asset:; img-src 'self' data: blob: asset:; media-src 'self' blob: asset:"
         ]
       }
     })
