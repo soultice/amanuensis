@@ -188,16 +188,25 @@ ipcMain.handle('export:markdown', async (_event, payload: {
   markdown: string
   assetsToCopy: Array<{ src: string; dest: string }>
 }) => {
-  const result = await dialog.showSaveDialog({
-    title: 'Export Transcript',
-    defaultPath: 'transcript.md',
-    filters: [{ name: 'Markdown', extensions: ['md'] }],
+  const result = await dialog.showOpenDialog({
+    title: 'Choose Export Folder',
+    properties: ['openDirectory', 'createDirectory'],
   })
-  if (result.canceled || !result.filePath) return { canceled: true }
+  if (result.canceled || !result.filePaths[0]) return { canceled: true }
 
-  const mdPath = result.filePath
-  const outputDir = path.dirname(mdPath)
-  const assetsDir = path.join(outputDir, 'assets')
+  // Create a timestamped subfolder so the full export is one self-contained folder
+  const now = new Date()
+  const stamp = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+    '-',
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+  ].join('')
+  const exportFolder = path.join(result.filePaths[0], `transcript-${stamp}`)
+  const assetsDir = path.join(exportFolder, 'assets')
+  const mdPath = path.join(exportFolder, 'transcript.md')
 
   await fsPromises.mkdir(assetsDir, { recursive: true })
   await fsPromises.writeFile(mdPath, payload.markdown, 'utf-8')
