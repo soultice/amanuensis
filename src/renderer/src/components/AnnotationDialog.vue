@@ -177,7 +177,7 @@ function save(): void {
 .annotation-dialog {
   border: none;
   border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
   padding: 0;
   width: 320px;
   position: fixed;
@@ -185,6 +185,8 @@ function save(): void {
   inset-area: top span-inline-end;
   position-try-fallbacks: bottom span-inline-end, top, bottom;
   margin: 8px;
+  background: var(--bg-raised);
+  color: var(--text);
 }
 .annotation-dialog::backdrop {
   background: transparent;
@@ -193,7 +195,7 @@ function save(): void {
 .annotation-dialog__title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--text-em);
   margin-bottom: 14px;
 }
 .annotation-dialog__types {
@@ -204,16 +206,17 @@ function save(): void {
 .type-btn {
   flex: 1;
   padding: 5px 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 5px;
-  background: white;
+  background: var(--bg-hl);
+  color: var(--text);
   font-size: 0.8rem;
   cursor: pointer;
 }
 .type-btn--active {
-  background: #1a56db;
-  color: white;
-  border-color: #1a56db;
+  background: var(--accent);
+  color: #fdf6e3;
+  border-color: var(--accent);
 }
 .annotation-dialog__body {
   display: flex;
@@ -226,12 +229,12 @@ function save(): void {
   max-height: 120px;
   object-fit: contain;
   border-radius: 4px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
 }
 .annotation-dialog__filename {
   font-size: 0.8rem;
-  color: #374151;
-  background: #f3f4f6;
+  color: var(--text);
+  background: var(--bg-hl);
   padding: 6px 10px;
   border-radius: 4px;
   overflow: hidden;
@@ -241,19 +244,23 @@ function save(): void {
 .annotation-dialog__textarea {
   width: 100%;
   padding: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 5px;
   font-size: 0.875rem;
   resize: vertical;
   box-sizing: border-box;
+  background: var(--bg-hl);
+  color: var(--text);
 }
 .annotation-dialog__input {
   width: 100%;
   padding: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 5px;
   font-size: 0.875rem;
   box-sizing: border-box;
+  background: var(--bg-hl);
+  color: var(--text);
 }
 .annotation-dialog__footer {
   display: flex;
@@ -263,8 +270,8 @@ function save(): void {
 .annotation-dialog__actions-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn-primary {
   padding: 7px 18px;
-  background: #1a56db;
-  color: white;
+  background: var(--accent);
+  color: #fdf6e3;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -272,15 +279,15 @@ function save(): void {
   font-weight: 500;
 }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary:hover:not(:disabled) { background: #1345b7; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-2); }
 .btn-secondary {
   padding: 7px 14px;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--bg-hl);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.875rem;
 }
-.btn-secondary:hover { background: #e5e7eb; }
+.btn-secondary:hover { background: var(--bg-raised); border-color: var(--accent); }
 </style>

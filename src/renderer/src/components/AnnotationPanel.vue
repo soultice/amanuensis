@@ -179,25 +179,26 @@ async function exportMarkdown(): Promise<void> {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--bg);
 }
 .annotation-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 6px 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  background: white;
+  background: var(--bg-hl);
 }
 .annotation-panel__title {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-em);
 }
 .export-btn {
   padding: 4px 12px;
-  background: #1a56db;
-  color: white;
+  background: var(--accent);
+  color: #fdf6e3;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -205,17 +206,17 @@ async function exportMarkdown(): Promise<void> {
   font-weight: 500;
 }
 .export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.export-btn:hover:not(:disabled) { background: #1345b7; }
+.export-btn:hover:not(:disabled) { background: var(--accent-2); }
 .annotation-panel__empty {
-  color: #9ca3af;
+  color: var(--text-de);
   font-size: 0.8rem;
   padding: 12px 16px;
 }
 .annotation-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
-  background: white;
+  background: var(--bg-raised);
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
@@ -228,8 +229,8 @@ async function exportMarkdown(): Promise<void> {
   margin-bottom: 6px;
 }
 .annotation-card__badge {
-  background: #1a56db;
-  color: white;
+  background: var(--accent);
+  color: #fdf6e3;
   font-size: 0.65rem;
   border-radius: 50%;
   width: 18px;
@@ -242,11 +243,11 @@ async function exportMarkdown(): Promise<void> {
 .annotation-card__type {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-em);
 }
 .annotation-card__range {
   font-size: 0.7rem;
-  color: #9ca3af;
+  color: var(--text-de);
   flex: 1;
 }
 .annotation-card__actions { display: flex; gap: 4px; }
@@ -254,13 +255,13 @@ async function exportMarkdown(): Promise<void> {
   background: none;
   border: none;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-de);
   font-size: 0.85rem;
   padding: 2px 4px;
   border-radius: 3px;
 }
-.icon-btn:hover { background: #f3f4f6; color: #374151; }
-.icon-btn--danger:hover { background: #fce8e6; color: #dc2626; }
+.icon-btn:hover { background: var(--bg-hl); color: var(--text-em); }
+.icon-btn--danger:hover { background: rgba(220,50,47,0.1); color: var(--danger); }
 .annotation-card__body { margin-bottom: 4px; }
 .annotation-card__image {
   max-width: 100%;
@@ -270,14 +271,14 @@ async function exportMarkdown(): Promise<void> {
 }
 .annotation-card__text {
   font-size: 0.8rem;
-  color: #374151;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .annotation-card__hint {
   font-size: 0.68rem;
-  color: #d1d5db;
+  color: var(--border);
   margin-top: 4px;
 }
 </style>
