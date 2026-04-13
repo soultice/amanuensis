@@ -111,7 +111,7 @@ onUnmounted(() => {
   padding: 0 16px;
 }
 .waveform-panel__empty {
-  color: #d1d5db;
+  color: var(--text-de);
   font-size: 0.8rem;
   letter-spacing: 0.05em;
 }

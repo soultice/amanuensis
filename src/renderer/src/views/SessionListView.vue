@@ -5,6 +5,13 @@
       <button class="session-list-view__new-btn" @click="handleNew">
         + New Session
       </button>
+      <button
+        class="session-list-view__theme-btn"
+        :title="themeStore.isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        @click="themeStore.toggle()"
+      >
+        {{ themeStore.isDark ? '☀' : '☾' }}
+      </button>
     </header>
 
     <main class="session-list-view__body">
@@ -41,9 +48,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useSessionStore } from '../stores/session'
+import { useThemeStore } from '../stores/theme'
 import type { SessionMeta } from '../stores/session'
 
 const sessionStore = useSessionStore()
+const themeStore = useThemeStore()
 const sessions = ref<SessionMeta[]>([])
 const loading = ref(true)
 
@@ -79,7 +88,8 @@ function formatDate(iso: string): string {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f9fafb;
+  background: var(--bg);
+  color: var(--text);
 }
 .session-list-view__header {
   display: flex;
@@ -87,27 +97,43 @@ function formatDate(iso: string): string {
   justify-content: space-between;
   padding: 0 24px;
   height: 56px;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-hl);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  gap: 12px;
 }
 .session-list-view__title {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-em);
   margin: 0;
+  flex: 1;
 }
 .session-list-view__new-btn {
   padding: 7px 14px;
-  background: #1a56db;
-  color: white;
+  background: var(--accent);
+  color: #fdf6e3;
   border: none;
   border-radius: 6px;
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
 }
-.session-list-view__new-btn:hover { background: #1345b7; }
+.session-list-view__new-btn:hover { background: var(--accent-2); }
+.session-list-view__theme-btn {
+  background: transparent;
+  color: var(--text-de);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.session-list-view__theme-btn:hover {
+  color: var(--text-em);
+  background: var(--bg-raised);
+}
 .session-list-view__body {
   flex: 1;
   overflow-y: auto;
@@ -117,7 +143,7 @@ function formatDate(iso: string): string {
   margin: 0 auto;
 }
 .session-list-view__hint {
-  color: #6b7280;
+  color: var(--text-de);
   font-size: 0.9rem;
   text-align: center;
   margin-top: 48px;
@@ -135,8 +161,8 @@ function formatDate(iso: string): string {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 .session-card__info {
@@ -148,11 +174,11 @@ function formatDate(iso: string): string {
 .session-card__name {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #111827;
+  color: var(--text-em);
 }
 .session-card__meta {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-de);
 }
 .session-card__actions {
   display: flex;
@@ -161,23 +187,23 @@ function formatDate(iso: string): string {
 }
 .session-card__open-btn {
   padding: 5px 12px;
-  background: #1a56db;
-  color: white;
+  background: var(--accent);
+  color: #fdf6e3;
   border: none;
   border-radius: 5px;
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
 }
-.session-card__open-btn:hover { background: #1345b7; }
+.session-card__open-btn:hover { background: var(--accent-2); }
 .session-card__delete-btn {
   padding: 5px 8px;
   background: transparent;
-  color: #9ca3af;
-  border: 1px solid #e5e7eb;
+  color: var(--text-de);
+  border: 1px solid var(--border);
   border-radius: 5px;
   font-size: 0.8rem;
   cursor: pointer;
 }
-.session-card__delete-btn:hover { color: #dc2626; border-color: #dc2626; }
+.session-card__delete-btn:hover { color: var(--danger); border-color: var(--danger); }
 </style>

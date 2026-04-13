@@ -37,10 +37,12 @@ async function restartApp(): Promise<void> {
 .error-dialog {
   border: none;
   border-radius: 12px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.32);
   padding: 0;
   max-width: 480px;
   width: 90%;
+  background: var(--bg-raised);
+  color: var(--text);
 }
 .error-dialog::backdrop {
   background: rgba(0, 0, 0, 0.6);
@@ -49,12 +51,12 @@ async function restartApp(): Promise<void> {
   padding: 32px;
 }
 .error-dialog__title {
-  color: #c5221f;
+  color: var(--danger);
   margin-bottom: 12px;
   font-size: 1.2rem;
 }
 .error-dialog__message {
-  color: #374151;
+  color: var(--text);
   margin-bottom: 16px;
   line-height: 1.6;
 }
@@ -63,18 +65,18 @@ async function restartApp(): Promise<void> {
 }
 .error-dialog__details summary {
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-de);
   font-size: 0.85rem;
   margin-bottom: 6px;
 }
 .error-dialog__details pre {
-  background: #f5f5f5;
+  background: var(--bg-hl);
   padding: 12px;
   border-radius: 6px;
   overflow-x: auto;
   font-size: 0.78rem;
   line-height: 1.5;
-  color: #374151;
+  color: var(--text);
   white-space: pre-wrap;
 }
 .error-dialog__actions {
@@ -83,8 +85,8 @@ async function restartApp(): Promise<void> {
 }
 .btn-primary {
   padding: 10px 28px;
-  background: #1a56db;
-  color: white;
+  background: var(--accent);
+  color: #fdf6e3;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -93,6 +95,6 @@ async function restartApp(): Promise<void> {
   transition: background 0.15s;
 }
 .btn-primary:hover {
-  background: #1345b7;
+  background: var(--accent-2);
 }
 </style>

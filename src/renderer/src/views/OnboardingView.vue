@@ -50,10 +50,11 @@ const modelStore = useModelStore()
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background: #f5f7fa;
+  background: var(--bg);
 }
 .onboarding__card {
-  background: white;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 48px;
   max-width: 480px;
@@ -65,10 +66,10 @@ const modelStore = useModelStore()
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 8px;
-  color: #1a1a1a;
+  color: var(--text-em);
 }
 .onboarding__subtitle {
-  color: #666;
+  color: var(--text-de);
   margin-bottom: 32px;
   font-size: 1rem;
 }
@@ -76,19 +77,20 @@ const modelStore = useModelStore()
   padding: 16px;
   border-radius: 8px;
   font-size: 0.95rem;
+  color: var(--text);
+  background: var(--bg-hl);
 }
 .status--checking {
-  background: #f0f0f0;
-  color: #666;
+  color: var(--text-de);
 }
 .status--ready {
-  background: #e6f4ea;
-  color: #1e7e34;
+  background: rgba(133,153,0,0.12);
+  color: var(--success);
   font-weight: 600;
 }
 .status--downloading {
-  background: #e8f0fe;
-  color: #1a56db;
+  background: rgba(38,139,210,0.12);
+  color: var(--accent);
 }
 .status--downloading progress {
   width: 100%;
@@ -97,19 +99,19 @@ const modelStore = useModelStore()
   border-radius: 4px;
 }
 .status--missing {
-  background: #fff8e1;
-  color: #856404;
+  background: var(--warn-bg);
+  color: var(--warn-text);
 }
 .status--error {
-  background: #fce8e6;
-  color: #c5221f;
+  background: rgba(220,50,47,0.1);
+  color: var(--danger);
 }
 .btn-primary {
   display: inline-block;
   margin-top: 14px;
   padding: 10px 28px;
-  background: #1a56db;
-  color: white;
+  background: var(--accent);
+  color: #fdf6e3;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -117,7 +119,5 @@ const modelStore = useModelStore()
   font-weight: 500;
   transition: background 0.15s;
 }
-.btn-primary:hover {
-  background: #1345b7;
-}
+.btn-primary:hover { background: var(--accent-2); }
 </style>
