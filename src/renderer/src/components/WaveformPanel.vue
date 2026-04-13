@@ -1,9 +1,16 @@
 <template>
   <div class="waveform-panel">
-    <div v-if="!recordingStore.audioBlobUrl" class="waveform-panel__empty">
-      <p>Waveform appears after recording</p>
-    </div>
-    <div v-else ref="containerRef" class="waveform-panel__wave" />
+    <!-- Placeholder shown before any audio is available -->
+    <p v-if="!recordingStore.audioBlobUrl" class="waveform-panel__empty">
+      Waveform appears after recording
+    </p>
+    <!--
+      Container is always in the DOM so useWaveSurfer's onMounted can create
+      the WaveSurfer instance with a valid element. Hiding it via v-if caused
+      containerRef to be null at mount, so WaveSurfer was never initialised
+      and the waveform was permanently blank after recording.
+    -->
+    <div ref="containerRef" class="waveform-panel__wave" />
   </div>
 </template>
 
@@ -106,14 +113,18 @@ onUnmounted(() => {
 <style scoped>
 .waveform-panel {
   height: 100%;
-  display: flex;
-  align-items: center;
+  position: relative;
   padding: 0 16px;
 }
 .waveform-panel__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
   color: var(--text-de);
   font-size: 0.8rem;
   letter-spacing: 0.05em;
+  pointer-events: none;
 }
 .waveform-panel__wave {
   width: 100%;
