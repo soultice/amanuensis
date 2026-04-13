@@ -243,8 +243,8 @@ function formatDuration(seconds: number): string {
 .annotation-float-btn {
   position: fixed;
   position-anchor: --selection-end;
-  inset-area: top span-inline-end;
-  position-try-fallbacks: bottom span-inline-end, top span-all, bottom span-all;
+  position-area: bottom span-inline-end;
+  position-try-fallbacks: top span-inline-end, bottom span-all, top span-all;
   margin: 4px;
   padding: 5px 10px;
   background: #1a56db;
