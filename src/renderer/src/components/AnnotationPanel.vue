@@ -140,8 +140,21 @@ async function exportMarkdown(): Promise<void> {
   const lines: string[] = ['# Transcript', '']
   for (const segment of segments) {
     const segWords = words.filter(w => w.segmentId === segment.id)
-    const line = segWords.map(w => w.word + (wordMarker.get(w.id) ?? '')).join('').trim()
-    if (line) lines.push(line)
+    let buffer = ''
+    for (const w of segWords) {
+      const marker = wordMarker.get(w.id) ?? ''
+      if (marker.startsWith('![')) {
+        // image → flush text buffer as its own line, then image on its own line
+        const flushed = (buffer + w.word).trim()
+        if (flushed) lines.push(flushed)
+        lines.push(marker)
+        buffer = ''
+      } else {
+        buffer += w.word + marker
+      }
+    }
+    const remaining = buffer.trim()
+    if (remaining) lines.push(remaining)
   }
 
   if (footnotes.length > 0) {
