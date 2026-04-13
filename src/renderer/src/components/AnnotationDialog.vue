@@ -71,6 +71,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAnnotationStore } from '../stores/annotation'
+import { useSessionStore } from '../stores/session'
 import type { Annotation, AnnotationType } from '../stores/annotation'
 
 const props = defineProps<{
@@ -81,6 +82,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: []; saved: [annotation: Annotation] }>()
 
 const annotationStore = useAnnotationStore()
+const sessionStore = useSessionStore()
 const dialogRef = ref<HTMLDialogElement>()
 
 const types: Array<{ value: AnnotationType; label: string }> = [
@@ -114,7 +116,7 @@ async function pickImage(): Promise<void> {
     { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
   ])
   if (!filePath) return
-  assetFilename.value = await window.api.copyAsset(filePath)
+  assetFilename.value = await window.api.copyAsset(sessionStore.currentSessionId!, filePath)
   previewUrl.value = `asset://localhost/${assetFilename.value}`
 }
 
@@ -127,7 +129,7 @@ async function pasteImage(): Promise<void> {
         const blob = await item.getType(imageType)
         const buffer = await blob.arrayBuffer()
         const ext = imageType.split('/')[1] ?? 'png'
-        assetFilename.value = await window.api.saveBlobAsset(buffer, ext)
+        assetFilename.value = await window.api.saveBlobAsset(sessionStore.currentSessionId!, buffer, ext)
         previewUrl.value = `asset://localhost/${assetFilename.value}`
         return
       }
@@ -142,7 +144,7 @@ async function pickAudio(): Promise<void> {
     { name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'webm'] },
   ])
   if (!filePath) return
-  assetFilename.value = await window.api.copyAsset(filePath)
+  assetFilename.value = await window.api.copyAsset(sessionStore.currentSessionId!, filePath)
 }
 
 async function pasteText(): Promise<void> {

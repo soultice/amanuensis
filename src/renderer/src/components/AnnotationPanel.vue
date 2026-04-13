@@ -78,11 +78,13 @@
 import { ref } from 'vue'
 import { useAnnotationStore } from '../stores/annotation'
 import { useTranscriptStore } from '../stores/transcript'
+import { useSessionStore } from '../stores/session'
 import type { Annotation, AnnotationType } from '../stores/annotation'
 import AnnotationDialog from './AnnotationDialog.vue'
 
 const annotationStore = useAnnotationStore()
 const transcriptStore = useTranscriptStore()
+const sessionStore = useSessionStore()
 const editingAnnotation = ref<Annotation | null>(null)
 const dragActiveId = ref<string | null>(null)
 
@@ -110,7 +112,7 @@ async function exportMarkdown(): Promise<void> {
   const words = transcriptStore.words
   const segments = transcriptStore.segments
   const annotations = annotationStore.sortedAnnotations
-  const assetsDir = await window.api.getAssetsDir()
+  const assetsDir = await window.api.getAssetsDir(sessionStore.currentSessionId!)
 
   const wordMarker = new Map<number, string>()
   const assetsToCopy: Array<{ src: string; dest: string }> = []

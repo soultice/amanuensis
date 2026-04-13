@@ -23,14 +23,17 @@ declare global {
         markdown: string
         assetsToCopy: Array<{ src: string; dest: string }>
       }): Promise<{ canceled: boolean; filePath?: string }>
-      // Phase 4 — File picker & assets
+      // Phase 4 — File picker & assets (updated for Phase 8 sessionId)
       openFile(filters: Array<{ name: string; extensions: string[] }>): Promise<string | null>
-      copyAsset(srcPath: string): Promise<string>
-      saveBlobAsset(buffer: ArrayBuffer, ext: string): Promise<string>
-      getAssetsDir(): Promise<string>
-      // Phase 4 — Session persistence
-      saveSession(data: string): Promise<void>
-      loadSession(): Promise<string | null>
+      copyAsset(sessionId: string, srcPath: string): Promise<string>
+      saveBlobAsset(sessionId: string, buffer: ArrayBuffer, ext: string): Promise<string>
+      getAssetsDir(sessionId: string): Promise<string>
+      // Phase 8 — Session management
+      listSessions(): Promise<Array<{ id: string; name: string; createdAt: string; updatedAt: string; wordCount: number }>>
+      createSession(): Promise<string>
+      openSession(id: string): Promise<string | null>
+      deleteSession(id: string): Promise<void>
+      saveSession(id: string, data: string): Promise<void>
       fileExists(filePath: string): Promise<boolean>
       saveAndQuit(): Promise<void>
       onSaveAndQuit(cb: () => void): () => void

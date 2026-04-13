@@ -2,8 +2,17 @@ import { defineStore } from 'pinia'
 import { useTranscriptStore } from './transcript'
 import { useAnnotationStore } from './annotation'
 import { useRecordingStore } from './recording'
+import { usePlaybackStore } from './playback'
 import type { Word, Segment } from './transcript'
 import type { Annotation } from './annotation'
+
+export interface SessionMeta {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+  wordCount: number
+}
 
 interface SessionData {
   version: 1
@@ -20,18 +29,77 @@ interface SessionData {
 
 export const useSessionStore = defineStore('session', {
   state: () => ({
+    currentSessionId: null as string | null,
     autoSaveIntervalId: null as ReturnType<typeof setInterval> | null,
     cleanupSaveAndQuit: null as (() => void) | null,
-    audioFileMissing: false,  // D-14: audio not found on restore
+    audioFileMissing: false,
   }),
 
   actions: {
+    /** List all sessions from disk */
+    async listSessions(): Promise<SessionMeta[]> {
+      return await window.api.listSessions()
+    },
+
+    /** Create a new session on disk, return its id (does NOT open it) */
+    async createSession(): Promise<string> {
+      return await window.api.createSession()
+    },
+
+    /** Open a session by id: load from disk, restore all stores */
+    async openSession(id: string): Promise<void> {
+      const raw = await window.api.openSession(id)
+      this.currentSessionId = id
+      this.audioFileMissing = false
+
+      if (!raw) return
+      try {
+        const data: SessionData = JSON.parse(raw)
+        const transcriptStore = useTranscriptStore()
+        const annotationStore = useAnnotationStore()
+        const recordingStore = useRecordingStore()
+
+        if (data.transcript) {
+          const words = data.transcript.words.map((w) =>
+            typeof (w as any).segmentId === 'number' ? w : { ...w, segmentId: 0 }
+          )
+          transcriptStore.words = words
+          if (data.transcript.segments && data.transcript.segments.length > 0) {
+            transcriptStore.segments = data.transcript.segments
+          } else if (words.length > 0) {
+            transcriptStore.segments = [{
+              id: 0,
+              start: words[0].start,
+              end: words[words.length - 1].end,
+              text: words.map((w) => w.word).join('').trim(),
+            }]
+          }
+          transcriptStore.language = data.transcript.language
+          transcriptStore.duration = data.transcript.duration
+          transcriptStore.transcriptState = 'complete'
+        }
+
+        annotationStore.annotations = data.annotations ?? []
+
+        if (data.audioPath) {
+          const exists = await window.api.fileExists(data.audioPath)
+          if (exists) {
+            recordingStore.audioBlobUrl = `file://${data.audioPath}`
+            recordingStore.recordingState = 'stopped'
+          } else {
+            this.audioFileMissing = true
+          }
+        }
+      } catch (err) {
+        console.error('[session] openSession restore failed:', err)
+      }
+    },
+
     /** Serialize all current state to JSON */
     buildSessionData(): string {
       const transcriptStore = useTranscriptStore()
       const annotationStore = useAnnotationStore()
       const recordingStore = useRecordingStore()
-
       const data: SessionData = {
         version: 1,
         savedAt: new Date().toISOString(),
@@ -51,77 +119,38 @@ export const useSessionStore = defineStore('session', {
       return JSON.stringify(data)
     },
 
-    /** Atomic JSON save — completely silent (D-09, SESSION-01) */
+    /** Save current session to disk (no-op if no active session) */
     async save(): Promise<void> {
+      if (!this.currentSessionId) return
       try {
-        await window.api.saveSession(this.buildSessionData())
+        await window.api.saveSession(this.currentSessionId, this.buildSessionData())
       } catch (err) {
-        // Silent — never surface auto-save errors to user
         console.error('[session] Auto-save failed:', err)
       }
     },
 
-    /** Restore full session from disk (SESSION-03) */
-    async restore(): Promise<void> {
-      const raw = await window.api.loadSession()
-      if (!raw) return
-
-      try {
-        const data: SessionData = JSON.parse(raw)
-        const transcriptStore = useTranscriptStore()
-        const annotationStore = useAnnotationStore()
-        const recordingStore = useRecordingStore()
-
-        // Restore transcript
-        if (data.transcript) {
-          // Ensure words have segmentId (may be missing from pre-Phase-5 sessions)
-          const words = data.transcript.words.map((w) =>
-            typeof (w as any).segmentId === 'number' ? w : { ...w, segmentId: 0 }
-          )
-          transcriptStore.words = words
-
-          // Restore segments — reconstruct a single fallback segment if none were saved
-          if (data.transcript.segments && data.transcript.segments.length > 0) {
-            transcriptStore.segments = data.transcript.segments
-          } else if (words.length > 0) {
-            // Fallback: create one segment covering all words so export works
-            transcriptStore.segments = [{
-              id: 0,
-              start: words[0].start,
-              end: words[words.length - 1].end,
-              text: words.map((w) => w.word).join('').trim(),
-            }]
-          }
-
-          transcriptStore.language = data.transcript.language
-          transcriptStore.duration = data.transcript.duration
-          transcriptStore.transcriptState = 'complete'
-        }
-
-        // Restore annotations
-        annotationStore.annotations = data.annotations ?? []
-
-        // Restore audio (D-14: warn if audio file no longer exists)
-        if (data.audioPath) {
-          const exists = await window.api.fileExists(data.audioPath)
-          if (exists) {
-            recordingStore.audioBlobUrl = `file://${data.audioPath}`
-            recordingStore.recordingState = 'stopped'
-          } else {
-            this.audioFileMissing = true
-          }
-        }
-      } catch (err) {
-        console.error('[session] Restore failed:', err)
-      }
+    /** Close the active session: save, reset all stores, clear currentSessionId */
+    async closeSession(): Promise<void> {
+      await this.save()
+      this._resetStores()
+      this.currentSessionId = null
+      this.audioFileMissing = false
     },
 
-    /** Start auto-save interval — every 30s (SESSION-01) */
+    _resetStores(): void {
+      const transcriptStore = useTranscriptStore()
+      const annotationStore = useAnnotationStore()
+      const recordingStore = useRecordingStore()
+      const playbackStore = usePlaybackStore()
+      transcriptStore.$reset()
+      annotationStore.$reset()
+      recordingStore.$reset()
+      playbackStore.$reset()
+    },
+
     startAutoSave(): void {
       this.stopAutoSave()
-      this.autoSaveIntervalId = setInterval(() => {
-        this.save()
-      }, 30_000)
+      this.autoSaveIntervalId = setInterval(() => { this.save() }, 30_000)
     },
 
     stopAutoSave(): void {
@@ -131,7 +160,6 @@ export const useSessionStore = defineStore('session', {
       }
     },
 
-    /** Register save-on-close handler (SESSION-02) */
     registerSaveOnClose(): void {
       this.cleanupSaveAndQuit = window.api.onSaveAndQuit(async () => {
         await this.save()

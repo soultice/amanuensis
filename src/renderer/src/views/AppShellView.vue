@@ -40,7 +40,6 @@ const transcriptStore = useTranscriptStore()
 const sessionStore = useSessionStore()
 
 onMounted(async () => {
-  await sessionStore.restore()          // SESSION-03: restore on launch
   sessionStore.startAutoSave()          // SESSION-01: 30s auto-save
   sessionStore.registerSaveOnClose()    // SESSION-02: save on close
 })
