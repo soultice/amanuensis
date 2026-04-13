@@ -16,7 +16,7 @@
 | 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | Complete    | 2026-04-12 |
 | 5 | Export & Packaging | User can export Markdown docs and install the app | Complete    | 2026-04-12 |
 | 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | Complete    | 2026-04-13 |
-| 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown (text / image / text) | Planned | — |
+| 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown (text / image / text) | Complete | 2026-04-13 |
 
 ---
 
