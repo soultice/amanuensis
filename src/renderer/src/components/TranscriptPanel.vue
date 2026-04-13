@@ -156,122 +156,158 @@ function formatDuration(seconds: number): string {
 </script>
 
 <style scoped>
-/* ---- Phase 2 styles (unchanged) ---- */
+/* ---- Layout shell ---- */
 .transcript-panel {
-  padding: 24px;
+  padding: 32px 24px;
   height: 100%;
   overflow-y: auto;
+  background: var(--bg);
+  color: var(--text);
 }
+
+/* ---- Reading column (D-06) ---- */
+.transcript-panel__content,
+.transcript-panel__empty,
+.transcript-panel__progress,
+.transcript-panel__error {
+  max-width: 68ch;
+  margin: 0 auto;
+}
+
+/* ---- Empty state ---- */
 .transcript-panel__empty {
-  color: #9ca3af;
-  font-size: 0.875rem;
+  color: var(--text-de);
+  font-size: 0.9rem;
   line-height: 1.6;
+  padding-top: 24px;
 }
+
+/* ---- Progress / transcribing ---- */
 .transcript-panel__progress {
   display: flex;
   flex-direction: column;
   gap: 12px;
   align-items: flex-start;
+  padding-top: 24px;
 }
 .transcript-panel__spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #1a56db;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
 }
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .transcript-panel__progress-label {
   font-size: 0.9rem;
-  color: #374151;
+  color: var(--text-em);
   font-weight: 500;
 }
 .transcript-panel__progress-hint {
-  font-size: 0.8rem;
-  color: #9ca3af;
-}
-.transcript-panel__error {
-  color: #dc2626;
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-.transcript-panel__btn {
-  margin-top: 8px;
-  padding: 4px 12px;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.transcript-panel__meta {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
-  font-size: 0.75rem;
-  color: #6b7280;
+  font-size: 0.82rem;
+  color: var(--text-de);
 }
 
-/* ---- Phase 3 word span styles (unchanged) ---- */
-.transcript-panel__text {
-  font-size: 1rem;
-  line-height: 1.75;
-  color: #1a1a1a;
+/* ---- Error state ---- */
+.transcript-panel__error {
+  color: var(--danger);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  padding-top: 24px;
 }
+.transcript-panel__btn {
+  margin-top: 10px;
+  padding: 5px 14px;
+  background: var(--bg-hl);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.transcript-panel__btn:hover { background: var(--bg-raised); }
+
+/* ---- Meta bar (D-09) ---- */
+.transcript-panel__meta {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 24px;
+  font-size: 0.75rem;
+  color: var(--text-de);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+/* ---- Prose (D-07, D-08) ---- */
+.transcript-panel__text {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1.0625rem;     /* 17px at 16px root */
+  line-height: 1.85;
+  color: var(--text-em);
+}
+
+/* ---- Word spans ---- */
 .word-span {
   cursor: pointer;
   border-radius: 2px;
   display: inline;
   user-select: none;
 }
-.word-span:hover { background: #f3f4f6; }
-.word-span--selected { background: rgba(26, 86, 219, 0.1); border-radius: 2px; }
+.word-span:hover {
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.word-span--selected {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-radius: 2px;
+}
 .word-span--active {
   text-decoration: underline;
-  text-decoration-color: #1a56db;
+  text-decoration-color: var(--accent);
   text-underline-offset: 3px;
   text-decoration-thickness: 2px;
 }
+.word-span--drop-over {
+  background: rgba(var(--accent-rgb), 0.18);
+  border-radius: 2px;
+}
 
-/* ---- Phase 4 additions ---- */
+/* ---- Annotation badge ---- */
+.annotation-badge {
+  font-size: 0.58rem;
+  color: var(--accent);
+  vertical-align: super;
+  cursor: default;
+  user-select: none;
+  margin-left: 1px;
+}
 
-/* Floating "Add annotation" button — CSS-anchored (D-01, D-03) */
+/* ---- Floating annotate button ---- */
 .annotation-float-btn {
   position: fixed;
   position-anchor: --selection-end;
   top: anchor(--selection-end bottom);
   left: anchor(--selection-end right);
   margin: 4px;
-  padding: 5px 10px;
-  background: #1a56db;
-  color: white;
+  padding: 5px 12px;
+  background: var(--accent);
+  color: #fdf6e3;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 500;
   z-index: 100;
 }
-.annotation-float-btn--blocked { background: #9ca3af; cursor: not-allowed; }
-.annotation-float-btn:hover:not(:disabled) { background: #1345b7; }
-
-/* Drop target highlight (D-06) */
-.word-span--drop-over {
-  background: rgba(26, 86, 219, 0.15);
-  border-radius: 2px;
+.annotation-float-btn--blocked {
+  background: var(--text-de);
+  cursor: not-allowed;
 }
-
-/* Superscript badge after last word of annotated range (D-04) */
-.annotation-badge {
-  font-size: 0.58rem;
-  color: #6b7280;
-  vertical-align: super;
-  cursor: default;
-  user-select: none;
-  margin-left: 1px;
+.annotation-float-btn:hover:not(:disabled) {
+  background: var(--accent-2);
 }
 </style>
