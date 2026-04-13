@@ -130,9 +130,15 @@ app.whenReady().then(() => {
   // (dev) or file:///app/index.html (prod). Main process reads the file directly and
   // returns it as a Fetch Response, so sandbox restrictions on the renderer don't apply.
   protocol.handle('asset', async (request) => {
-    const { pathname } = new URL(request.url)
-    // pathname for "asset:///uuid.png" → "/uuid.png" → strip leading slash
-    const filename = decodeURIComponent(pathname.replace(/^\/+/, ''))
+    const url = new URL(request.url)
+    // Two valid forms reach this handler:
+    //   asset://localhost/uuid.png  → hostname='localhost', pathname='/uuid.png'
+    //   asset://uuid.png/           → Chromium normalises asset:///uuid.png when
+    //                                  no explicit host is given (uuid treated as host)
+    // Extract the filename whichever way it arrived.
+    const filename = decodeURIComponent(
+      url.pathname.replace(/^\/+/, '').replace(/\/$/, '') || url.hostname
+    )
     const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
     const filePath = join(assetsDir, filename)
     try {

@@ -87,7 +87,7 @@ const editingAnnotation = ref<Annotation | null>(null)
 const dragActiveId = ref<string | null>(null)
 
 function assetUrl(filename: string): string {
-  return `asset:///${filename}`
+  return `asset://localhost/${filename}`
 }
 
 function typeLabel(type: AnnotationType): string {

@@ -105,7 +105,7 @@ onMounted(() => {
   dialogRef.value?.showModal()
   // NOTE: annotation dialog IS dismissible — no e.preventDefault() on cancel
   if (props.editingAnnotation?.assetFilename && props.editingAnnotation.type === 'image') {
-    previewUrl.value = `asset:///${props.editingAnnotation.assetFilename}`
+    previewUrl.value = `asset://localhost/${props.editingAnnotation.assetFilename}`
   }
 })
 
@@ -115,7 +115,7 @@ async function pickImage(): Promise<void> {
   ])
   if (!filePath) return
   assetFilename.value = await window.api.copyAsset(filePath)
-  previewUrl.value = `asset:///${assetFilename.value}`
+  previewUrl.value = `asset://localhost/${assetFilename.value}`
 }
 
 async function pasteImage(): Promise<void> {
@@ -128,7 +128,7 @@ async function pasteImage(): Promise<void> {
         const buffer = await blob.arrayBuffer()
         const ext = imageType.split('/')[1] ?? 'png'
         assetFilename.value = await window.api.saveBlobAsset(buffer, ext)
-        previewUrl.value = `asset:///${assetFilename.value}`
+        previewUrl.value = `asset://localhost/${assetFilename.value}`
         return
       }
     }
