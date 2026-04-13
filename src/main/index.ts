@@ -116,12 +116,41 @@ ipcMain.handle('app:restart', () => {
   app.exit(0)
 })
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.amanuensis')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  // Phase 8: migrate legacy single-session current.json → per-session directory
+  const legacyPath = join(app.getPath('userData'), 'sessions', 'current.json')
+  try {
+    const raw = await fsPromises.readFile(legacyPath, 'utf-8')
+    const existingIndex = await readSessionIndex()
+    // Only migrate if no sessions exist yet (first Phase 8 launch)
+    if (existingIndex.length === 0) {
+      const id = crypto.randomUUID()
+      const now = new Date()
+      const pad = (n: number): string => String(n).padStart(2, '0')
+      const name = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+      const sessionDir = join(app.getPath('userData'), 'sessions', id)
+      await fsPromises.mkdir(join(sessionDir, 'assets'), { recursive: true })
+      await fsPromises.writeFile(join(sessionDir, 'session.json'), raw, 'utf-8')
+      // Copy shared assets if they exist
+      const legacyAssetsDir = join(app.getPath('userData'), 'sessions', 'assets')
+      try {
+        const files = await fsPromises.readdir(legacyAssetsDir)
+        for (const f of files) {
+          await fsPromises.copyFile(join(legacyAssetsDir, f), join(sessionDir, 'assets', f))
+        }
+      } catch { /* no legacy assets */ }
+      const parsed = JSON.parse(raw)
+      const wordCount: number = parsed?.transcript?.words?.length ?? 0
+      await writeSessionIndex([{ id, name, createdAt: now.toISOString(), updatedAt: now.toISOString(), wordCount }])
+      await fsPromises.unlink(legacyPath)
+    }
+  } catch { /* no legacy session — normal first launch */ }
 
   createWindow()
 
@@ -139,8 +168,22 @@ app.whenReady().then(() => {
     const filename = decodeURIComponent(
       url.pathname.replace(/^\/+/, '').replace(/\/$/, '') || url.hostname
     )
-    const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
-    const filePath = join(assetsDir, filename)
+    // Phase 8: assets now live in sessions/{sessionId}/assets/. Search all session dirs.
+    const sessionsRoot = join(app.getPath('userData'), 'sessions')
+    let resolvedPath: string | null = null
+    try {
+      const entries = await fsPromises.readdir(sessionsRoot, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        const candidate = join(sessionsRoot, entry.name, 'assets', filename)
+        if (existsSync(candidate)) { resolvedPath = candidate; break }
+      }
+    } catch { /* no sessions dir yet */ }
+    if (!resolvedPath) {
+      console.error('[asset-protocol] Asset not found in any session:', filename)
+      return new Response('Not found', { status: 404 })
+    }
+    const filePath = resolvedPath
     try {
       const data = await fsPromises.readFile(filePath)
       const ext = path.extname(filePath).toLowerCase().slice(1)
@@ -182,6 +225,32 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+
+// ---- Session index helpers (Phase 8) ----
+interface SessionMeta {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+  wordCount: number
+}
+
+async function readSessionIndex(): Promise<SessionMeta[]> {
+  const indexPath = join(app.getPath('userData'), 'sessions', 'index.json')
+  try {
+    const raw = await fsPromises.readFile(indexPath, 'utf-8')
+    return JSON.parse(raw) as SessionMeta[]
+  } catch {
+    return []
+  }
+}
+
+async function writeSessionIndex(index: SessionMeta[]): Promise<void> {
+  const sessionsDir = join(app.getPath('userData'), 'sessions')
+  await fsPromises.mkdir(sessionsDir, { recursive: true })
+  const indexPath = join(sessionsDir, 'index.json')
+  await fsPromises.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8')
+}
 
 // ---- Markdown export (Phase 5) ----
 ipcMain.handle('export:markdown', async (_event, payload: {
@@ -228,8 +297,8 @@ ipcMain.handle('dialog:openFile', async (_event, filters: Array<{ name: string; 
   return result.canceled ? null : result.filePaths[0] ?? null
 })
 
-ipcMain.handle('session:copyAsset', async (_event, srcPath: string) => {
-  const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
+ipcMain.handle('session:copyAsset', async (_event, sessionId: string, srcPath: string) => {
+  const assetsDir = join(app.getPath('userData'), 'sessions', sessionId, 'assets')
   await fsPromises.mkdir(assetsDir, { recursive: true })
   const ext = path.extname(srcPath)
   const filename = `${crypto.randomUUID()}${ext}`
@@ -237,27 +306,64 @@ ipcMain.handle('session:copyAsset', async (_event, srcPath: string) => {
   return filename
 })
 
-ipcMain.handle('session:saveBlobAsset', async (_event, buffer: Buffer, ext: string) => {
-  const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
+ipcMain.handle('session:saveBlobAsset', async (_event, sessionId: string, buffer: Buffer, ext: string) => {
+  const assetsDir = join(app.getPath('userData'), 'sessions', sessionId, 'assets')
   await fsPromises.mkdir(assetsDir, { recursive: true })
   const filename = `${crypto.randomUUID()}.${ext}`
   await fsPromises.writeFile(join(assetsDir, filename), buffer)
   return filename
 })
 
-ipcMain.handle('session:getAssetsDir', async () => {
-  const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
+ipcMain.handle('session:getAssetsDir', async (_event, sessionId: string) => {
+  const assetsDir = join(app.getPath('userData'), 'sessions', sessionId, 'assets')
   await fsPromises.mkdir(assetsDir, { recursive: true })
   return assetsDir
 })
 
-// ---- Session persistence (Phase 4) ----
-ipcMain.handle('session:save', async (_event, data: string) => {
-  const sessionDir = join(app.getPath('userData'), 'sessions')
+// ---- Session persistence (Phase 8 — multi-session) ----
+
+ipcMain.handle('session:list', async () => {
+  return await readSessionIndex()
+})
+
+ipcMain.handle('session:create', async () => {
+  const id = crypto.randomUUID()
+  const now = new Date()
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  const name = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+
+  const sessionDir = join(app.getPath('userData'), 'sessions', id)
+  const assetsDir = join(sessionDir, 'assets')
+  await fsPromises.mkdir(assetsDir, { recursive: true })
+
+  const emptySession = JSON.stringify({ version: 1, savedAt: now.toISOString(), audioPath: null, transcript: null, annotations: [] })
+  await fsPromises.writeFile(join(sessionDir, 'session.json'), emptySession, 'utf-8')
+
+  const index = await readSessionIndex()
+  const meta: SessionMeta = { id, name, createdAt: now.toISOString(), updatedAt: now.toISOString(), wordCount: 0 }
+  index.unshift(meta)
+  await writeSessionIndex(index)
+  return id
+})
+
+ipcMain.handle('session:open', async (_event, id: string) => {
+  const sessionPath = join(app.getPath('userData'), 'sessions', id, 'session.json')
+  try { return await fsPromises.readFile(sessionPath, 'utf-8') } catch { return null }
+})
+
+ipcMain.handle('session:delete', async (_event, id: string) => {
+  const sessionDir = join(app.getPath('userData'), 'sessions', id)
+  try { await fsPromises.rm(sessionDir, { recursive: true, force: true }) } catch { /* ignore */ }
+  const index = await readSessionIndex()
+  await writeSessionIndex(index.filter(s => s.id !== id))
+})
+
+ipcMain.handle('session:save', async (_event, payload: { id: string; data: string }) => {
+  const sessionDir = join(app.getPath('userData'), 'sessions', payload.id)
   await fsPromises.mkdir(sessionDir, { recursive: true })
-  const sessionPath = join(sessionDir, 'current.json')
-  const tmpPath = join(sessionDir, 'current.json.tmp')
-  await fsPromises.writeFile(tmpPath, data, 'utf-8')
+  const sessionPath = join(sessionDir, 'session.json')
+  const tmpPath = join(sessionDir, 'session.json.tmp')
+  await fsPromises.writeFile(tmpPath, payload.data, 'utf-8')
   let retries = 3
   while (retries > 0) {
     try {
@@ -270,11 +376,18 @@ ipcMain.handle('session:save', async (_event, data: string) => {
       } else { throw err }
     }
   }
-})
-
-ipcMain.handle('session:load', async () => {
-  const sessionPath = join(app.getPath('userData'), 'sessions', 'current.json')
-  try { return await fsPromises.readFile(sessionPath, 'utf-8') } catch { return null }
+  // Update index metadata
+  try {
+    const parsed = JSON.parse(payload.data)
+    const wordCount: number = parsed?.transcript?.words?.length ?? 0
+    const index = await readSessionIndex()
+    const entry = index.find(s => s.id === payload.id)
+    if (entry) {
+      entry.updatedAt = new Date().toISOString()
+      entry.wordCount = wordCount
+      await writeSessionIndex(index)
+    }
+  } catch { /* index update is best-effort */ }
 })
 
 ipcMain.handle('fs:exists', (_event, filePath: string) => existsSync(filePath))

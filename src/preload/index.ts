@@ -51,21 +51,27 @@ contextBridge.exposeInMainWorld('api', {
   }): Promise<{ canceled: boolean; filePath?: string }> =>
     ipcRenderer.invoke('export:markdown', payload),
 
-  // Phase 4 — File picker & assets
+  // Phase 4 — File picker & assets (updated for Phase 8 sessionId)
   openFile: (filters: Array<{ name: string; extensions: string[] }>): Promise<string | null> =>
     ipcRenderer.invoke('dialog:openFile', filters),
-  copyAsset: (srcPath: string): Promise<string> =>
-    ipcRenderer.invoke('session:copyAsset', srcPath),
-  saveBlobAsset: (buffer: ArrayBuffer, ext: string): Promise<string> =>
-    ipcRenderer.invoke('session:saveBlobAsset', Buffer.from(buffer), ext),
-  getAssetsDir: (): Promise<string> =>
-    ipcRenderer.invoke('session:getAssetsDir'),
+  copyAsset: (sessionId: string, srcPath: string): Promise<string> =>
+    ipcRenderer.invoke('session:copyAsset', sessionId, srcPath),
+  saveBlobAsset: (sessionId: string, buffer: ArrayBuffer, ext: string): Promise<string> =>
+    ipcRenderer.invoke('session:saveBlobAsset', sessionId, Buffer.from(buffer), ext),
+  getAssetsDir: (sessionId: string): Promise<string> =>
+    ipcRenderer.invoke('session:getAssetsDir', sessionId),
 
-  // Phase 4 — Session persistence
-  saveSession: (data: string): Promise<void> =>
-    ipcRenderer.invoke('session:save', data),
-  loadSession: (): Promise<string | null> =>
-    ipcRenderer.invoke('session:load'),
+  // Phase 8 — Session management
+  listSessions: (): Promise<Array<{ id: string; name: string; createdAt: string; updatedAt: string; wordCount: number }>> =>
+    ipcRenderer.invoke('session:list'),
+  createSession: (): Promise<string> =>
+    ipcRenderer.invoke('session:create'),
+  openSession: (id: string): Promise<string | null> =>
+    ipcRenderer.invoke('session:open', id),
+  deleteSession: (id: string): Promise<void> =>
+    ipcRenderer.invoke('session:delete', id),
+  saveSession: (id: string, data: string): Promise<void> =>
+    ipcRenderer.invoke('session:save', { id, data }),
   fileExists: (filePath: string): Promise<boolean> =>
     ipcRenderer.invoke('fs:exists', filePath),
   saveAndQuit: (): Promise<void> =>
