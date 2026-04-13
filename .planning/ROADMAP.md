@@ -17,7 +17,7 @@
 | 5 | Export & Packaging | User can export Markdown docs and install the app | Complete    | 2026-04-12 |
 | 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | Complete    | 2026-04-13 |
 | 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown (text / image / text) | Complete | 2026-04-13 |
-| 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Planned | — |
+| 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete    | 2026-04-13 |
 
 ---
 
@@ -203,7 +203,7 @@
 **Requirements:** *(extends SESSION-01–03 from Phase 4)*
 
 **Plans:**
-0 plans
+3/3 plans complete
 
 **Success Criteria:**
 1. User can see a list of all saved sessions (title, date, duration snippet)
