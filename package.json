@@ -24,7 +24,6 @@
     "@electron-toolkit/utils": "^3.0.0",
     "@meersagor/wavesurfer-vue": "^2.0.2",
     "@vueuse/core": "^11.3.0",
-    "get-port": "^7.1.0",
     "pinia": "^2.2.6",
     "vue": "^3.5.13",
     "wavesurfer.js": "^7.12.6"
@@ -39,7 +38,9 @@
       {
         "from": "dist-sidecar/amanuensis-sidecar",
         "to": "sidecar",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {

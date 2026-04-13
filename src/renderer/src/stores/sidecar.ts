@@ -8,6 +8,12 @@ export const useSidecarStore = defineStore('sidecar', {
   }),
   actions: {
     async initialize(): Promise<void> {
+      if (!window.api) {
+        console.error('[sidecarStore] window.api not available — preload not loaded')
+        this.status = 'error'
+        this.error = 'Preload script did not load. Check Electron security settings.'
+        return
+      }
       this.port = await window.api.getSidecarPort()
       this.status = await window.api.getSidecarStatus()
 

@@ -15,6 +15,15 @@ export default defineConfig({
         '@renderer': resolve('src/renderer/src')
       }
     },
-    plugins: [vue()]
+    plugins: [vue()],
+    optimizeDeps: {
+      // Exclude packages that try to use Node builtins in browser context
+      exclude: ['worker_threads']
+    },
+    build: {
+      rollupOptions: {
+        external: ['worker_threads']
+      }
+    }
   }
 })

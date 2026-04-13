@@ -2,7 +2,20 @@ import { ChildProcess, spawn } from 'child_process'
 import { app } from 'electron'
 import path from 'path'
 import { is } from '@electron-toolkit/utils'
-import getPort from 'get-port'
+import { createServer } from 'net'
+
+/** Find a free TCP port using Node's net module (no ESM dependency). */
+function findFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer()
+    srv.listen(0, '127.0.0.1', () => {
+      const addr = srv.address()
+      const port = addr && typeof addr === 'object' ? addr.port : 0
+      srv.close(() => resolve(port))
+    })
+    srv.on('error', reject)
+  })
+}
 
 let sidecarProcess: ChildProcess | null = null
 let sidecarPort: number | null = null
@@ -10,7 +23,7 @@ let sidecarStatus: 'starting' | 'ready' | 'error' = 'starting'
 let sidecarError: string | null = null
 
 export async function startSidecar(): Promise<number> {
-  const port = await getPort()
+  const port = await findFreePort()
   sidecarPort = port
   const userDataDir = app.getPath('userData')
 
@@ -24,6 +37,9 @@ export async function startSidecar(): Promise<number> {
     command = process.platform === 'win32' ? 'poetry.exe' : 'poetry'
     args = ['run', 'python', '-m', 'app.main', '--port', String(port), '--user-data', userDataDir]
     cwd = sidecarDir
+    // Ensure Poetry's install directory is in PATH (installed to ~/.local/bin by default)
+    const poetryBinDir = path.join(require('os').homedir(), '.local', 'bin')
+    process.env.PATH = `${poetryBinDir}${path.delimiter}${process.env.PATH}`
   } else {
     // Production: use PyInstaller binary from extraResources
     const binaryName = process.platform === 'win32' ? 'amanuensis-sidecar.exe' : 'amanuensis-sidecar'
