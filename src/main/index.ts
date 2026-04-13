@@ -1,10 +1,16 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron'
 import { join } from 'path'
 import path from 'path'
+import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { startSidecar, killSidecar, getSidecarPort, getSidecarStatus } from './sidecar'
 import { existsSync, promises as fsPromises } from 'fs'
 import crypto from 'crypto'
+
+// Must be called synchronously before app.whenReady()
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'asset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }
+])
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -26,7 +32,7 @@ function createWindow(): BrowserWindow {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:*; img-src 'self' data: blob: file:; media-src 'self' blob: file:"
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:*; img-src 'self' data: blob: asset:; media-src 'self' blob: asset:"
         ]
       }
     })
@@ -119,6 +125,19 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+
+  // Serve local asset files via asset:// custom protocol — avoids cross-origin
+  // restrictions that block file:// URLs when the renderer is loaded from http://localhost
+  // (dev) or file:///app/index.html (prod). Main process reads the file directly and
+  // returns it as a Fetch Response, so sandbox restrictions on the renderer don't apply.
+  protocol.handle('asset', (request) => {
+    const url = new URL(request.url)
+    // pathname for "asset:///some-uuid.png" → "/some-uuid.png" → strip leading slashes
+    const filename = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
+    const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
+    const filePath = join(assetsDir, filename)
+    return net.fetch(pathToFileURL(filePath).toString())
+  })
 
   // Start sidecar non-blocking — notify renderer when ready or on failure
   startSidecar()

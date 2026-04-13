@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useAnnotationStore } from '../stores/annotation'
 import { useTranscriptStore } from '../stores/transcript'
 import type { Annotation, AnnotationType } from '../stores/annotation'
@@ -85,14 +85,9 @@ const annotationStore = useAnnotationStore()
 const transcriptStore = useTranscriptStore()
 const editingAnnotation = ref<Annotation | null>(null)
 const dragActiveId = ref<string | null>(null)
-const assetsDir = ref<string>('')
-
-onMounted(async () => {
-  assetsDir.value = await window.api.getAssetsDir()
-})
 
 function assetUrl(filename: string): string {
-  return assetsDir.value ? encodeURI(`file://${assetsDir.value}/${filename}`) : ''
+  return `asset:///${filename}`
 }
 
 function typeLabel(type: AnnotationType): string {
