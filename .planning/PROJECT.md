@@ -12,7 +12,7 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] User can export a `.md` file with an adjacent `assets/` folder; annotations are injected at their transcript position in the correct Markdown form — images as `![]()` on their own block line, footnotes and hyperlinks inline *(Validated in Phase 7: Image Export Formatting)*
 
 ### Active
 
@@ -82,4 +82,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-12 after Phase 1 (Foundation) complete*
+*Last updated: 2026-04-13 after Phase 7 (Image Export Formatting) complete — milestone v1.0 complete*
