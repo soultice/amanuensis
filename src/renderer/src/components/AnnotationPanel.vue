@@ -22,6 +22,7 @@
       :key="annotation.id"
       class="annotation-card"
       draggable="true"
+      @click="focusAnnotation(annotation)"
       @dragstart="onDragStart($event, annotation.id)"
       @dragend="dragActiveId = null"
     >
@@ -33,11 +34,11 @@
           words {{ annotation.wordStartIdx + 1 }}–{{ annotation.wordEndIdx + 1 }}
         </span>
         <div class="annotation-card__actions">
-          <button class="icon-btn" title="Edit" @click="openEdit(annotation)">✎</button>
+          <button class="icon-btn" title="Edit" @click.stop="openEdit(annotation)">✎</button>
           <button
             class="icon-btn icon-btn--danger"
             title="Remove"
-            @click="annotationStore.removeAnnotation(annotation.id)"
+            @click.stop="annotationStore.removeAnnotation(annotation.id)"
           >✕</button>
         </div>
       </div>
@@ -78,15 +79,30 @@
 import { ref } from 'vue'
 import { useAnnotationStore } from '../stores/annotation'
 import { useTranscriptStore } from '../stores/transcript'
+import { usePlaybackStore } from '../stores/playback'
 import { useSessionStore } from '../stores/session'
 import type { Annotation, AnnotationType } from '../stores/annotation'
 import AnnotationDialog from './AnnotationDialog.vue'
 
 const annotationStore = useAnnotationStore()
 const transcriptStore = useTranscriptStore()
+const playbackStore = usePlaybackStore()
 const sessionStore = useSessionStore()
 const editingAnnotation = ref<Annotation | null>(null)
 const dragActiveId = ref<string | null>(null)
+
+// Click an annotation card → set waveform region + seek to its start time
+function focusAnnotation(annotation: Annotation): void {
+  // Establish anchor at the first word of this annotation
+  playbackStore.setAnchorOnly(annotation.wordStartIdx)
+  // Extend selection to the last word (no-op if single-word annotation)
+  if (annotation.wordEndIdx !== annotation.wordStartIdx) {
+    playbackStore.extendSelection(annotation.wordEndIdx)
+  }
+  // Seek audio to the annotation's first word
+  const startWord = transcriptStore.words[annotation.wordStartIdx]
+  if (startWord) playbackStore.seekToTime(startWord.start)
+}
 
 function assetUrl(filename: string): string {
   return `asset://localhost/${filename}`
