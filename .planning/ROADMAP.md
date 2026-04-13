@@ -15,7 +15,7 @@
 | 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | Complete    | 2026-04-12 |
 | 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | Complete    | 2026-04-12 |
 | 5 | Export & Packaging | User can export Markdown docs and install the app | Complete    | 2026-04-12 |
-| 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | *(gap-closure)* | 1 |
+| 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | Complete    | 2026-04-13 |
 
 ---
 
@@ -163,7 +163,7 @@
 **Requirements:** *(gap-closure — no new requirements, validates existing phases 1–5)*
 
 **Plans:**
-1. Bug triage and fixes — run the app, identify and resolve runtime issues across all features
+1/1 plans complete
 
 **Success Criteria:**
 1. App launches without errors
