@@ -65,7 +65,7 @@ async function handleCloseSession(): Promise<void> {
 <style scoped>
 .app-shell {
   display: grid;
-  grid-template-rows: 48px 1fr 24px;
+  grid-template-rows: auto 48px 1fr 24px; /* auto=warning (collapses when absent), toolbar, main, statusbar */
   height: 100vh;
   overflow: hidden;
   background: var(--bg);

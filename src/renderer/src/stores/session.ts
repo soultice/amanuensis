@@ -82,12 +82,25 @@ export const useSessionStore = defineStore('session', {
         annotationStore.annotations = data.annotations ?? []
 
         if (data.audioPath) {
-          const exists = await window.api.fileExists(data.audioPath)
-          if (exists) {
-            recordingStore.audioBlobUrl = `file://${data.audioPath}`
-            recordingStore.recordingState = 'stopped'
-          } else {
+          const p = data.audioPath
+          if (p.startsWith('blob:')) {
+            // Old ephemeral blob URL — unrestorable across sessions
             this.audioFileMissing = true
+          } else if (p.startsWith('/')) {
+            // Legacy absolute file path (audio was saved outside session assets)
+            const exists = await window.api.fileExists(p)
+            if (exists) {
+              // Serve via asset:// by filename so CSP allows playback
+              const filename = p.split('/').pop() ?? ''
+              recordingStore.audioBlobUrl = `asset://localhost/${filename}`
+              recordingStore.recordingState = 'stopped'
+            } else {
+              this.audioFileMissing = true
+            }
+          } else {
+            // New format: just the asset filename (e.g. "uuid.webm")
+            recordingStore.audioBlobUrl = `asset://localhost/${p}`
+            recordingStore.recordingState = 'stopped'
           }
         }
       } catch (err) {
@@ -100,12 +113,28 @@ export const useSessionStore = defineStore('session', {
       const transcriptStore = useTranscriptStore()
       const annotationStore = useAnnotationStore()
       const recordingStore = useRecordingStore()
+
+      // Normalise audioBlobUrl to a storable path:
+      //   asset://localhost/uuid.webm  → "uuid.webm"   (new format)
+      //   file:///abs/path            → "/abs/path"    (legacy)
+      //   blob:...                    → null           (not persisted yet — save() handles this before calling us)
+      let audioPath: string | null = null
+      const url = recordingStore.audioBlobUrl
+      if (url) {
+        if (url.startsWith('asset://localhost/')) {
+          audioPath = url.slice('asset://localhost/'.length)
+        } else if (url.startsWith('file://')) {
+          audioPath = url.slice('file://'.length)
+        } else if (!url.startsWith('blob:')) {
+          audioPath = url
+        }
+        // blob: URLs are ephemeral — don’t persist them (save() should have converted first)
+      }
+
       const data: SessionData = {
         version: 1,
         savedAt: new Date().toISOString(),
-        audioPath: recordingStore.audioBlobUrl
-          ? recordingStore.audioBlobUrl.replace(/^file:\/\//, '')
-          : null,
+        audioPath,
         transcript: transcriptStore.hasTranscript
           ? {
               language: transcriptStore.language,
@@ -123,6 +152,15 @@ export const useSessionStore = defineStore('session', {
     async save(): Promise<void> {
       if (!this.currentSessionId) return
       try {
+        // Persist ephemeral blob audio to the session assets dir before serialising.
+        // blob: URLs are tied to the current browser session and can’t survive a reopen.
+        const recordingStore = useRecordingStore()
+        if (recordingStore.audioBlobUrl?.startsWith('blob:') && recordingStore.audioBlob) {
+          const buffer = await recordingStore.audioBlob.arrayBuffer()
+          const filename = await window.api.saveBlobAsset(this.currentSessionId, buffer, 'webm')
+          // Switch to asset:// URL so CSP allows playback and the path survives reopens
+          recordingStore.audioBlobUrl = `asset://localhost/${filename}`
+        }
         await window.api.saveSession(this.currentSessionId, this.buildSessionData())
       } catch (err) {
         console.error('[session] Auto-save failed:', err)
