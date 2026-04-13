@@ -92,7 +92,7 @@ onMounted(async () => {
 })
 
 function assetUrl(filename: string): string {
-  return assetsDir.value ? `file://${assetsDir.value}/${filename}` : ''
+  return assetsDir.value ? encodeURI(`file://${assetsDir.value}/${filename}`) : ''
 }
 
 function typeLabel(type: AnnotationType): string {

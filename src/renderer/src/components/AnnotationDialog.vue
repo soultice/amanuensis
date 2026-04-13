@@ -83,6 +83,11 @@ const emit = defineEmits<{ close: []; saved: [annotation: Annotation] }>()
 const annotationStore = useAnnotationStore()
 const dialogRef = ref<HTMLDialogElement>()
 
+/** Build a valid file:// URL from a native OS path (encodes spaces etc.). */
+function toFileUrl(absPath: string): string {
+  return encodeURI(`file://${absPath}`)
+}
+
 const types: Array<{ value: AnnotationType; label: string }> = [
   { value: 'image', label: 'Image' },
   { value: 'audio', label: 'Audio' },
@@ -106,7 +111,7 @@ onMounted(() => {
   // NOTE: annotation dialog IS dismissible — no e.preventDefault() on cancel
   if (props.editingAnnotation?.assetFilename && props.editingAnnotation.type === 'image') {
     window.api.getAssetsDir().then((dir) => {
-      previewUrl.value = `file://${dir}/${props.editingAnnotation!.assetFilename}`
+      previewUrl.value = toFileUrl(`${dir}/${props.editingAnnotation!.assetFilename}`)
     })
   }
 })
@@ -118,7 +123,7 @@ async function pickImage(): Promise<void> {
   if (!filePath) return
   assetFilename.value = await window.api.copyAsset(filePath)
   const assetsDir = await window.api.getAssetsDir()
-  previewUrl.value = `file://${assetsDir}/${assetFilename.value}`
+  previewUrl.value = toFileUrl(`${assetsDir}/${assetFilename.value}`)
 }
 
 async function pasteImage(): Promise<void> {
@@ -132,7 +137,7 @@ async function pasteImage(): Promise<void> {
         const ext = imageType.split('/')[1] ?? 'png'
         assetFilename.value = await window.api.saveBlobAsset(buffer, ext)
         const assetsDir = await window.api.getAssetsDir()
-        previewUrl.value = `file://${assetsDir}/${assetFilename.value}`
+        previewUrl.value = toFileUrl(`${assetsDir}/${assetFilename.value}`)
         return
       }
     }
