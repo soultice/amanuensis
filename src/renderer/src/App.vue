@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useSidecarStore } from './stores/sidecar'
 import { useModelStore } from './stores/model'
 import OnboardingView from './views/OnboardingView.vue'
@@ -24,6 +24,16 @@ onMounted(async () => {
   await sidecarStore.initialize()
   await modelStore.refresh()
 })
+
+// Re-check model status when sidecar finishes starting (handles startup race)
+watch(
+  () => sidecarStore.status,
+  async (status) => {
+    if (status === 'ready') {
+      await modelStore.refresh()
+    }
+  }
+)
 </script>
 
 <style>

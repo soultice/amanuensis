@@ -34,10 +34,10 @@ const { waveSurfer, isReady } = useWaveSurfer({
     barWidth: 2,
     barGap: 1,
     barRadius: 2,
-    url: recordingStore.audioBlobUrl ?? undefined,
     interact: true,
     normalize: true,
     plugins: [regionsPlugin],
+    // url loaded dynamically when audioBlobUrl changes (see watch below)
   },
 })
 
@@ -55,7 +55,22 @@ watch(waveSurfer, (ws) => {
   ws.on('play', () => playbackStore.onPlayPause(true))
   ws.on('pause', () => playbackStore.onPlayPause(false))
   ws.on('finish', () => playbackStore.onPlayPause(false))
+
+  // Load audio if already available at mount (e.g., after session restore)
+  if (recordingStore.audioBlobUrl) {
+    ws.load(recordingStore.audioBlobUrl)
+  }
 })
+
+// Reload WaveSurfer when audioBlobUrl changes (after recording completes)
+watch(
+  () => recordingStore.audioBlobUrl,
+  (url) => {
+    if (url && waveSurfer.value) {
+      waveSurfer.value.load(url)
+    }
+  }
+)
 
 // Sync WaveSurfer region with the selected word range (D-08, D-03/D-04)
 watch(

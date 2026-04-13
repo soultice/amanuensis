@@ -74,8 +74,25 @@ export const useSessionStore = defineStore('session', {
 
         // Restore transcript
         if (data.transcript) {
-          transcriptStore.words = data.transcript.words
-          transcriptStore.segments = data.transcript.segments ?? []
+          // Ensure words have segmentId (may be missing from pre-Phase-5 sessions)
+          const words = data.transcript.words.map((w) =>
+            typeof (w as any).segmentId === 'number' ? w : { ...w, segmentId: 0 }
+          )
+          transcriptStore.words = words
+
+          // Restore segments — reconstruct a single fallback segment if none were saved
+          if (data.transcript.segments && data.transcript.segments.length > 0) {
+            transcriptStore.segments = data.transcript.segments
+          } else if (words.length > 0) {
+            // Fallback: create one segment covering all words so export works
+            transcriptStore.segments = [{
+              id: 0,
+              start: words[0].start,
+              end: words[words.length - 1].end,
+              text: words.map((w) => w.word).join('').trim(),
+            }]
+          }
+
           transcriptStore.language = data.transcript.language
           transcriptStore.duration = data.transcript.duration
           transcriptStore.transcriptState = 'complete'

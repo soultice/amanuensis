@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
+import { markRaw } from 'vue'
 
 export const usePlaybackStore = defineStore('playback', {
   state: () => ({
-    // WaveSurfer readiness
     isWaveSurferReady: false,
     isPlaying: false,
     currentTime: 0,    // updated by WaveSurfer 'timeupdate' event
@@ -46,7 +46,7 @@ export const usePlaybackStore = defineStore('playback', {
 
   actions: {
     registerWaveSurfer(ws: any): void {
-      this._ws = ws
+      this._ws = markRaw(ws)
       this.isWaveSurferReady = false
     },
 

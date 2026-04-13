@@ -26,7 +26,7 @@ function createWindow(): BrowserWindow {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:*; img-src 'self' data: blob:; media-src 'self' blob:"
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:*; img-src 'self' data: blob: file:; media-src 'self' blob: file:"
         ]
       }
     })
@@ -74,8 +74,35 @@ ipcMain.handle('model:get-status', async () => {
 ipcMain.handle('model:download', async () => {
   const port = getSidecarPort()
   if (!port) throw new Error('Sidecar not ready — cannot start model download')
+
+  // Start download (returns immediately — sidecar runs it in a background thread)
   const res = await fetch(`http://localhost:${port}/model/download`, { method: 'POST' })
   if (!res.ok) throw new Error(`Download request failed: ${res.status}`)
+
+  // Poll sidecar for download progress and forward to renderer
+  const win = BrowserWindow.getAllWindows()[0]
+  if (!win) return
+
+  const pollInterval = setInterval(async () => {
+    try {
+      const statusRes = await fetch(`http://localhost:${port}/model/status`)
+      if (!statusRes.ok) return
+      const status: { state: string; progress: number } = await statusRes.json()
+
+      if (!win.isDestroyed()) {
+        win.webContents.send('model:progress', status.progress)
+      }
+
+      if (status.state === 'present' || status.state === 'error') {
+        clearInterval(pollInterval)
+        if (status.state === 'present' && !win.isDestroyed()) {
+          win.webContents.send('model:progress', 100)
+        }
+      }
+    } catch {
+      // Sidecar not reachable — continue polling
+    }
+  }, 500)
 })
 
 // IPC handlers — app

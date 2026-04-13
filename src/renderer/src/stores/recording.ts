@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { markRaw } from 'vue'
 
 export type RecordingState = 'idle' | 'recording' | 'stopped'
 
@@ -61,13 +62,13 @@ export const useRecordingStore = defineStore('recording', {
             channelCount: 1,
           },
         })
-        this._stream = stream
+        this._stream = markRaw(stream)
 
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
           : 'audio/webm'
         const recorder = new MediaRecorder(stream, { mimeType })
-        this._recorder = recorder
+        this._recorder = markRaw(recorder)
 
         recorder.ondataavailable = (e: BlobEvent) => {
           if (e.data.size > 0) this._chunks.push(e.data)
