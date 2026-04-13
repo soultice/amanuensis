@@ -193,7 +193,7 @@
 ---
 
 | 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete | 2026-04-13 |
-| 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel (measure, font, rhythm) | Planned | — |
+| 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel (measure, font, rhythm) | Complete    | 2026-04-13 |
 
 ---
 
@@ -229,7 +229,7 @@
 **Requirements:** *(UI-01 through UI-N — to be defined in planning)*
 
 **Plans:**
-0/? plans complete
+5/5 plans complete
 
 **Success Criteria:**
 1. App ships Solarized Light as default; Solarized Dark toggled via a button in the toolbar
