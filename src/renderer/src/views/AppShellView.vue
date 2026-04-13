@@ -8,6 +8,7 @@
       class="app-shell__toolbar"
       :is-transcribing="transcriptStore.isTranscribing"
       @transcribe="handleTranscribe"
+      @close-session="handleCloseSession"
     />
     <main class="app-shell__main">
       <section class="app-shell__waveform">
@@ -52,6 +53,12 @@ onUnmounted(() => {
 async function handleTranscribe(): Promise<void> {
   if (!recordingStore.audioBlob) return
   await transcriptStore.transcribe(recordingStore.audioBlob)
+}
+
+async function handleCloseSession(): Promise<void> {
+  sessionStore.stopAutoSave()
+  await sessionStore.closeSession()
+  // currentSessionId is now null → App.vue routes back to SessionListView
 }
 </script>
 

@@ -3,6 +3,16 @@
     <span class="toolbar__title">Amanuensis</span>
 
     <div class="toolbar__controls">
+      <!-- ← Sessions button (Phase 8) -->
+      <button
+        class="toolbar__btn toolbar__btn--sessions"
+        :disabled="recordingStore.isRecording"
+        :title="recordingStore.isRecording ? 'Stop recording before leaving' : 'Back to sessions'"
+        @click="emit('closeSession')"
+      >
+        ← Sessions
+      </button>
+
       <!-- Audio device selector (AUDIO-01) -->
       <select
         v-if="recordingStore.devices.length > 0"
@@ -87,7 +97,7 @@ import { useRecordingStore } from '../stores/recording'
 import LevelMeter from './LevelMeter.vue'
 
 const props = defineProps<{ isTranscribing: boolean }>()
-const emit = defineEmits<{ transcribe: [] }>()
+const emit = defineEmits<{ transcribe: []; closeSession: [] }>()
 
 const recordingStore = useRecordingStore()
 const activeStream = ref<MediaStream | null>(null)
@@ -187,6 +197,18 @@ function playRecording(): void {
 }
 .toolbar__btn--transcribe:hover:not(:disabled) {
   background: #1345b7;
+}
+.toolbar__btn--sessions {
+  background: transparent;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+.toolbar__btn--sessions:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+.toolbar__btn--sessions:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .toolbar__error {
   font-size: 0.75rem;
