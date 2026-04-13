@@ -17,6 +17,7 @@
 | 5 | Export & Packaging | User can export Markdown docs and install the app | Complete    | 2026-04-12 |
 | 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | Complete    | 2026-04-13 |
 | 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown (text / image / text) | Complete | 2026-04-13 |
+| 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Planned | — |
 
 ---
 
@@ -188,6 +189,29 @@
 1. Exported `.md` renders images as block-level elements — each image is preceded and followed by a blank line
 2. No transcript text appears on the same line as an image tag
 3. Existing text and hyperlink annotation formatting is unaffected
+
+---
+
+| 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Planned | — |
+
+---
+
+## Phase 8: Session Management
+
+**Goal:** Allow users to maintain multiple transcript sessions simultaneously. A user can close the current session (saving all state), browse a list of past sessions, and open any of them to continue work — or start a fresh session from scratch.
+
+**Requirements:** *(extends SESSION-01–03 from Phase 4)*
+
+**Plans:**
+0 plans
+
+**Success Criteria:**
+1. User can see a list of all saved sessions (title, date, duration snippet)
+2. User can open any past session and resume annotation where they left off
+3. User can close the current session and return to the session list
+4. User can create a brand-new session from the session list
+5. Switching sessions preserves all annotation and transcript data for the closed session
+6. App opens to the session list (not the last session) on relaunch
 
 ---
 

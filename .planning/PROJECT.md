@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A cross-platform desktop application for recording audio, transcribing it locally via OpenAI Whisper, annotating the transcript with images and rich metadata, and exporting polished Markdown documentation — including an assets folder — to share with colleagues. One session at a time: open, record, annotate, export, done.
+A cross-platform desktop application for recording audio, transcribing it locally via OpenAI Whisper, annotating the transcript with images and rich metadata, and exporting polished Markdown documentation — including an assets folder — to share with colleagues. Multiple sessions supported: create, close, browse, and reopen in-progress transcripts at any time.
 
 ## Core Value
 
@@ -26,13 +26,17 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 - [ ] User can edit, move, and remove existing annotations
 - [ ] Annotations cannot overlap
 - [ ] Annotation edit dialog uses CSS anchor positioning and the `<dialog>` element; supports clipboard paste and file picker
+- [ ] User can view a list of saved sessions and open any of them to resume work
+- [ ] User can close the current session and return to a session list
+- [ ] User can create a new session from the session list
+- [ ] App opens to the session list on launch (not directly into a session)
 - [ ] User can export a `.md` file with an adjacent `assets/` folder; annotations are injected at their transcript position in the correct Markdown form (images as `![]()`, footnotes, hyperlinks)
 - [ ] App auto-saves session state and restores it on next open
 
 ### Out of Scope
 
 - In-app screen capture — user pastes or picks screenshots manually
-- Multiple concurrent sessions / recording library — one session at a time
+- Multiple concurrent sessions / recording library — one session at a time *(reversed in Phase 8: user can switch between sessions)*
 - Cloud sync or remote Whisper API — local model only
 - OAuth / user accounts — single-user local app
 - Mobile or web deployment — desktop only
@@ -62,7 +66,7 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 | Local Whisper `large` model | User requirement; privacy; no API cost | - Pending |
 | Text-first annotation (not waveform-first) | User clicks words, not timeline; lower cognitive load | - Pending |
 | `.md` + `assets/` export (not base64 embed) | Colleague usability; files remain editable | - Pending |
-| One session at a time | Simplifies state management; matches stated workflow | - Pending |
+| One session at a time | Simplifies state management; matches stated workflow | **Reversed in Phase 8** — user explicitly requested multi-session support |
 
 ## Evolution
 
