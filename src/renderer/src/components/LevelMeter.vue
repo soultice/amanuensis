@@ -83,11 +83,11 @@ onUnmounted(() => stopMeter())
 .level-meter__bar {
   flex: 1;
   min-height: 2px;
-  background: #d1d5db;
+  background: var(--border);
   border-radius: 1px;
   transition: height 60ms ease-out;
 }
 .level-meter--active .level-meter__bar {
-  background: #16a34a;
+  background: var(--success);
 }
 </style>

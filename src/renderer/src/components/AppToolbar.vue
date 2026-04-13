@@ -87,6 +87,15 @@
       >
         ⚠ {{ recordingStore.error.slice(0, 40) }}
       </span>
+
+      <!-- Phase 9: dark mode toggle -->
+      <button
+        class="toolbar__btn toolbar__btn--theme"
+        :title="themeStore.isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        @click="themeStore.toggle()"
+      >
+        {{ themeStore.isDark ? '☀' : '☾' }}
+      </button>
     </div>
   </header>
 </template>
@@ -94,12 +103,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRecordingStore } from '../stores/recording'
+import { useThemeStore } from '../stores/theme'
 import LevelMeter from './LevelMeter.vue'
 
 const props = defineProps<{ isTranscribing: boolean }>()
 const emit = defineEmits<{ transcribe: []; closeSession: [] }>()
 
 const recordingStore = useRecordingStore()
+const themeStore = useThemeStore()
 const activeStream = ref<MediaStream | null>(null)
 
 onMounted(() => recordingStore.loadDevices())
@@ -124,14 +135,14 @@ function playRecording(): void {
   gap: 12px;
   padding: 0 16px;
   height: 48px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-hl);
   overflow: hidden;
 }
 .toolbar__title {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #374151;
+  color: var(--text-em);
   flex-shrink: 0;
 }
 .toolbar__controls {
@@ -144,16 +155,17 @@ function playRecording(): void {
 .toolbar__device-select {
   font-size: 0.8rem;
   padding: 3px 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: white;
+  background: var(--bg-raised);
+  color: var(--text);
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .toolbar__device-hint {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-de);
 }
 .toolbar__btn {
   padding: 5px 12px;
@@ -170,49 +182,62 @@ function playRecording(): void {
   cursor: not-allowed;
 }
 .toolbar__btn--record {
-  background: #dc2626;
-  color: white;
+  background: var(--danger);
+  color: #fdf6e3;
 }
 .toolbar__btn--record:hover:not(:disabled) {
-  background: #b91c1c;
+  background: #a8201e;
 }
 .toolbar__btn--stop {
-  background: #374151;
-  color: white;
+  background: var(--text-em);
+  color: var(--bg);
 }
 .toolbar__btn--stop:hover {
-  background: #1f2937;
+  background: var(--text);
 }
 .toolbar__btn--play {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 .toolbar__btn--play:hover {
-  background: #e5e7eb;
+  background: var(--bg-hl);
 }
 .toolbar__btn--transcribe {
-  background: #1a56db;
-  color: white;
+  background: var(--accent);
+  color: #fdf6e3;
 }
 .toolbar__btn--transcribe:hover:not(:disabled) {
-  background: #1345b7;
+  background: var(--accent-2);
 }
 .toolbar__btn--sessions {
   background: transparent;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  color: var(--text-em);
+  border: 1px solid var(--border);
 }
 .toolbar__btn--sessions:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--bg-raised);
 }
 .toolbar__btn--sessions:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.toolbar__btn--theme {
+  background: transparent;
+  color: var(--text-de);
+  border: 1px solid var(--border);
+  margin-left: auto;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 8px;
+}
+.toolbar__btn--theme:hover {
+  color: var(--text-em);
+  background: var(--bg-raised);
+}
 .toolbar__error {
   font-size: 0.75rem;
-  color: #dc2626;
+  color: var(--danger);
   flex-shrink: 1;
   overflow: hidden;
   text-overflow: ellipsis;

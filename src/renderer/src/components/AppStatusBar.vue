@@ -18,12 +18,12 @@ const sidecarStore = useSidecarStore()
   gap: 16px;
   padding: 0 16px;
   height: 24px;
-  background: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background: var(--bg-hl);
+  border-top: 1px solid var(--border);
   font-size: 0.72rem;
-  color: #6b7280;
+  color: var(--text-de);
 }
-.status--ready { color: #16a34a; }
-.status--error { color: #dc2626; }
-.status--starting { color: #d97706; }
+.status--ready   { color: var(--success); }
+.status--error   { color: var(--danger); }
+.status--starting { color: #b58900; }
 </style>
