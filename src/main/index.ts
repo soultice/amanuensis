@@ -1,7 +1,6 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, protocol } from 'electron'
 import { join } from 'path'
 import path from 'path'
-import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { startSidecar, killSidecar, getSidecarPort, getSidecarStatus } from './sidecar'
 import { existsSync, promises as fsPromises } from 'fs'
@@ -130,13 +129,27 @@ app.whenReady().then(() => {
   // restrictions that block file:// URLs when the renderer is loaded from http://localhost
   // (dev) or file:///app/index.html (prod). Main process reads the file directly and
   // returns it as a Fetch Response, so sandbox restrictions on the renderer don't apply.
-  protocol.handle('asset', (request) => {
-    const url = new URL(request.url)
-    // pathname for "asset:///some-uuid.png" → "/some-uuid.png" → strip leading slashes
-    const filename = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
+  protocol.handle('asset', async (request) => {
+    const { pathname } = new URL(request.url)
+    // pathname for "asset:///uuid.png" → "/uuid.png" → strip leading slash
+    const filename = decodeURIComponent(pathname.replace(/^\/+/, ''))
     const assetsDir = join(app.getPath('userData'), 'sessions', 'assets')
     const filePath = join(assetsDir, filename)
-    return net.fetch(pathToFileURL(filePath).toString())
+    try {
+      const data = await fsPromises.readFile(filePath)
+      const ext = path.extname(filePath).toLowerCase().slice(1)
+      const mimeTypes: Record<string, string> = {
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        gif: 'image/gif', webp: 'image/webp',
+        mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+      }
+      return new Response(data, {
+        headers: { 'Content-Type': mimeTypes[ext] ?? 'application/octet-stream' },
+      })
+    } catch (err) {
+      console.error('[asset-protocol] Failed to serve:', filePath, err)
+      return new Response('Not found', { status: 404 })
+    }
   })
 
   // Start sidecar non-blocking — notify renderer when ready or on failure
