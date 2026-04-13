@@ -15,29 +15,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, computed, onUnmounted } from 'vue'
 import { useWaveSurfer } from '@meersagor/wavesurfer-vue'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import { useRecordingStore } from '../stores/recording'
 import { usePlaybackStore } from '../stores/playback'
 import { useTranscriptStore } from '../stores/transcript'
+import { useThemeStore } from '../stores/theme'
 
 const recordingStore = useRecordingStore()
 const playbackStore = usePlaybackStore()
 const transcriptStore = useTranscriptStore()
+const themeStore = useThemeStore()
 
 const containerRef = ref<HTMLElement | null>(null)
 
 // Regions plugin — created before WaveSurfer init so it can be passed as plugin
 const regionsPlugin = RegionsPlugin.create()
 
+// Theme-adaptive wave colours. waveColor #d1d5db had 1.20:1 contrast on
+// Solarized-light (#eee8d5) — invisible. Use Solarized palette tokens instead.
+const waveColors = computed(() =>
+  themeStore.isDark
+    ? { waveColor: '#93a1a1', progressColor: '#268bd2', cursorColor: '#93a1a1' }
+    : { waveColor: '#657b83', progressColor: '#1a56db', cursorColor: '#374151' }
+)
+
 const { waveSurfer, isReady } = useWaveSurfer({
   containerRef,
   options: {
     height: 160,
-    waveColor: '#d1d5db',
-    progressColor: '#1a56db',
-    cursorColor: '#374151',
+    ...waveColors.value,
     barWidth: 2,
     barGap: 1,
     barRadius: 2,
@@ -104,6 +112,13 @@ watch(
     }
   },
 )
+
+// Update WaveSurfer colours when the Solarized theme toggles (light ↔ dark)
+watch(waveColors, (colors) => {
+  if (waveSurfer.value) {
+    waveSurfer.value.setOptions({ ...waveSurfer.value.options, ...colors })
+  }
+})
 
 onUnmounted(() => {
   waveSurfer.value?.destroy()
