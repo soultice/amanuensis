@@ -50,7 +50,7 @@ async def transcribe_audio(audio: UploadFile = File(...)):
             loop = asyncio.get_event_loop()
             model_dir = state.model_manager.get_model_path()
             result = await loop.run_in_executor(
-                None, transcribe_file, model_dir, tmp_path
+                None, transcribe_file, model_dir, tmp_path, state.transcription_device
             )
 
             state.transcription_status = {"state": "complete", "progress": 100, "error": None}

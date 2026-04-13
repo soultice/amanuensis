@@ -16,7 +16,17 @@ _model: Optional["WhisperModel"] = None
 _model_lock = threading.Lock()
 
 
-def get_model(model_dir: Path) -> "WhisperModel":
+def _compute_type_for_device(device: str) -> str:
+    """Return the best CTranslate2 compute_type for the chosen device.
+
+    - cuda  → float16  (full GPU precision; ~2× faster than int8 on CUDA)
+    - cpu   → int8     (quantised; fastest on CPU)
+    - auto  → auto     (let CTranslate2 decide; falls back gracefully)
+    """
+    return {"cuda": "float16", "cpu": "int8"}.get(device, "auto")
+
+
+def get_model(model_dir: Path, device: str = "auto") -> "WhisperModel":
     """
     Load WhisperModel once and cache it.
     Thread-safe double-checked locking pattern.
@@ -27,16 +37,17 @@ def get_model(model_dir: Path) -> "WhisperModel":
             if _model is None:
                 from faster_whisper import WhisperModel  # type: ignore
 
+                compute_type = _compute_type_for_device(device)
                 _model = WhisperModel(
                     str(model_dir),
-                    device="auto",        # GPU if CUDA available, else CPU
-                    compute_type="auto",  # fp16 on GPU, int8 on CPU
+                    device=device,         # "auto" | "cuda" | "cpu"
+                    compute_type=compute_type,
                     num_workers=1,
                 )
     return _model
 
 
-def transcribe_file(model_dir: Path, audio_path: Path) -> dict:
+def transcribe_file(model_dir: Path, audio_path: Path, device: str = "auto") -> dict:
     """
     Transcribe a single audio file and return word-level results.
 
@@ -50,7 +61,7 @@ def transcribe_file(model_dir: Path, audio_path: Path) -> dict:
             "duration": float
         }
     """
-    model = get_model(model_dir)
+    model = get_model(model_dir, device=device)
 
     segments_result, info = model.transcribe(
         str(audio_path),
