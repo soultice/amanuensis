@@ -171,3 +171,9 @@
 3. Word click-to-seek and selection work in the transcript
 4. Annotations can be created, edited, and removed
 5. Session saves and restores correctly across relaunches
+
+---
+
+## Backlog
+
+- [ ] **Phase 999.1**: When exporting to markdown, image annotations should not be inline but instead it should be text newline image newline text
