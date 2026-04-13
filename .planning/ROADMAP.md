@@ -16,6 +16,7 @@
 | 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | Complete    | 2026-04-12 |
 | 5 | Export & Packaging | User can export Markdown docs and install the app | Complete    | 2026-04-12 |
 | 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | Complete    | 2026-04-13 |
+| 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown (text / image / text) | Planned | — |
 
 ---
 
@@ -174,6 +175,22 @@
 
 ---
 
+## Phase 7: Image Export Formatting
+
+**Goal:** When exporting to Markdown, image annotations must not be inline — they must be rendered as block elements: the preceding transcript text ends on its own line, the image appears on its own line (`![...](assets/...)`), and the following text begins on a new line.
+
+**Requirements:** *(refinement of EXPORT-02)*
+
+**Plans:**
+0/1 plans complete
+
+**Success Criteria:**
+1. Exported `.md` renders images as block-level elements — each image is preceded and followed by a blank line
+2. No transcript text appears on the same line as an image tag
+3. Existing text and hyperlink annotation formatting is unaffected
+
+---
+
 ## Backlog
 
-- [ ] **Phase 999.1**: When exporting to markdown, image annotations should not be inline but instead it should be text newline image newline text
+*(empty)*
