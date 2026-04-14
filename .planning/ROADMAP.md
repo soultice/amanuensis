@@ -254,17 +254,6 @@
 Plans:
 - [ ] TBD (run /gsd-plan-phase 11 to break down)
 
----
-
-## Phase 12: Replace Transcription Backend with NVIDIA Canary Qwen 2.5B
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 12 to break down)
-
 ### Phase 13: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
 
 **Goal:** [To be planned]
@@ -275,147 +264,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 13 to break down)
 
-### Phase 14: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 13
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
-
-### Phase 15: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 14
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 15 to break down)
-
-### Phase 16: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 15
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 16 to break down)
-
-### Phase 17: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 16
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 17 to break down)
-
-### Phase 18: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 17
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 18 to break down)
-
-### Phase 19: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 18
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 19 to break down)
-
-### Phase 20: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 19
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 20 to break down)
-
-### Phase 21: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 20
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 21 to break down)
-
-### Phase 22: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 21
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 22 to break down)
-
-### Phase 23: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 22
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 23 to break down)
-
-### Phase 24: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 23
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 24 to break down)
-
-### Phase 25: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 24
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 25 to break down)
-
-### Phase 26: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 25
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 26 to break down)
-
-### Phase 27: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 26
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 27 to break down)
-
 ---
+
+## Phase 12: Replace Transcription Backend with NVIDIA Canary Qwen 2.5B
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12 to break down)
 
 ## Phase 10: Packaging & Distribution
 
