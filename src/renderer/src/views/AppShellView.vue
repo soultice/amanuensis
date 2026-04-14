@@ -89,7 +89,8 @@ async function handleCloseSession(): Promise<void> {
 .app-shell__main {
   grid-row: 3;
   display: grid;
-  grid-template-rows: 180px 1fr auto;
+  grid-template-columns: 25% 1fr;
+  grid-template-rows: 1fr auto;
   overflow: hidden;
   min-height: 0;
 }
@@ -97,16 +98,23 @@ async function handleCloseSession(): Promise<void> {
   grid-row: 4;
 }
 .app-shell__waveform {
-  border-bottom: 1px solid var(--border);
+  grid-column: 1;
+  grid-row: 1;
+  border-right: 1px solid var(--border);
   background: var(--bg-hl);
   overflow: hidden;
+  min-height: 0;
 }
 .app-shell__transcript {
+  grid-column: 2;
+  grid-row: 1;
   overflow-y: auto;
   min-height: 0;
   background: var(--bg);
 }
 .app-shell__annotations {
+  grid-column: 1 / -1;
+  grid-row: 2;
   border-top: 1px solid var(--border);
   max-height: 200px;
   overflow-y: auto;

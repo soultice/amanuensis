@@ -1,5 +1,5 @@
 <template>
-  <div class="waveform-panel">
+  <div ref="panelRef" class="waveform-panel" @click="handlePanelClick">
     <!-- Placeholder shown before any audio is available -->
     <p v-if="!recordingStore.audioBlobUrl" class="waveform-panel__empty">
       Waveform appears after recording
@@ -29,6 +29,8 @@ const transcriptStore = useTranscriptStore()
 const themeStore = useThemeStore()
 
 const containerRef = ref<HTMLElement | null>(null)
+const panelRef = ref<HTMLElement | null>(null)
+let resizeObserver: ResizeObserver | null = null
 
 // Regions plugin — created before WaveSurfer init so it can be passed as plugin
 const regionsPlugin = RegionsPlugin.create()
@@ -59,6 +61,10 @@ const { waveSurfer, isReady } = useWaveSurfer({
 // Register WaveSurfer instance and wire events into playback store
 watch(waveSurfer, (ws) => {
   if (!ws) return
+
+  // Disable built-in click-to-seek (X-axis) — replaced by custom Y-axis handler
+  ws.setOptions({ interact: false })
+
   playbackStore.registerWaveSurfer(ws)
 
   ws.on('ready', (dur: number) => {
@@ -74,6 +80,22 @@ watch(waveSurfer, (ws) => {
   // Load audio if already available at mount (e.g., after session restore)
   if (recordingStore.audioBlobUrl) {
     ws.load(recordingStore.audioBlobUrl)
+  }
+
+  // Set up ResizeObserver to keep wave div width and WaveSurfer height in sync
+  // with the panel dimensions. Must run after ws is available.
+  if (panelRef.value) {
+    resizeObserver?.disconnect()
+    resizeObserver = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      // After 90° rotation: wave div CSS width = panelHeight (so it fills height visually)
+      if (containerRef.value) {
+        containerRef.value.style.width = `${Math.floor(height)}px`
+      }
+      // WaveSurfer height option = panelWidth (fills the across-waveform visual width)
+      ws.setOptions({ height: Math.floor(width) })
+    })
+    resizeObserver.observe(panelRef.value)
   }
 })
 
@@ -116,11 +138,23 @@ watch(
 // Update WaveSurfer colours when the Solarized theme toggles (light ↔ dark)
 watch(waveColors, (colors) => {
   if (waveSurfer.value) {
-    waveSurfer.value.setOptions({ ...waveSurfer.value.options, ...colors })
+    waveSurfer.value.setOptions(colors)
   }
 })
 
+function handlePanelClick(e: MouseEvent): void {
+  if (!waveSurfer.value || !panelRef.value) return
+  const rect = panelRef.value.getBoundingClientRect()
+  // After 90° rotation, vertical position maps to audio time position
+  const relativeTime = (e.clientY - rect.top) / rect.height
+  const duration = waveSurfer.value.getDuration()
+  if (duration > 0) {
+    waveSurfer.value.setTime(relativeTime * duration)
+  }
+}
+
 onUnmounted(() => {
+  resizeObserver?.disconnect()
   waveSurfer.value?.destroy()
 })
 </script>
@@ -129,20 +163,29 @@ onUnmounted(() => {
 .waveform-panel {
   height: 100%;
   position: relative;
-  padding: 0 16px;
+  overflow: hidden;
+  /* padding: 0 16px removed — confounds rotation geometry */
 }
 .waveform-panel__empty {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   color: var(--text-de);
   font-size: 0.8rem;
   letter-spacing: 0.05em;
   pointer-events: none;
+  writing-mode: vertical-rl;   /* rotate placeholder text to read top-to-bottom */
+  transform: rotate(180deg);   /* flip so text reads top→bottom, not bottom→top */
 }
 .waveform-panel__wave {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 100%;            /* transform-origin: 0 0 rotates around bottom-left corner of panel */
+  left: 0;
+  /* width: set dynamically by ResizeObserver to panelHeight px */
+  /* height: controlled by WaveSurfer height option = panelWidth px */
+  transform: rotate(90deg);
+  transform-origin: 0 0;
 }
 </style>
