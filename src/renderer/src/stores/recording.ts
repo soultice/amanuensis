@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { markRaw } from 'vue'
 
-export type RecordingState = 'idle' | 'recording' | 'stopped'
+export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopped'
 
 export const useRecordingStore = defineStore('recording', {
   state: () => ({
@@ -18,11 +18,15 @@ export const useRecordingStore = defineStore('recording', {
     _stream: null as MediaStream | null,
     _chunks: [] as BlobPart[],
     _startTime: 0,
+    _pausedMs: 0,       // total milliseconds spent paused
+    _pauseStart: 0,     // timestamp when current pause began; 0 if not paused
   }),
 
   getters: {
     hasRecording: (s): boolean => s.audioBlob !== null,
     isRecording: (s): boolean => s.recordingState === 'recording',
+    isPaused:    (s): boolean => s.recordingState === 'paused',
+    isActive:    (s): boolean => s.recordingState === 'recording' || s.recordingState === 'paused',
     isStopped: (s): boolean => s.recordingState === 'stopped',
   },
 
@@ -53,6 +57,8 @@ export const useRecordingStore = defineStore('recording', {
         this.audioBlobUrl = null
       }
       this._chunks = []
+      this._pausedMs = 0
+      this._pauseStart = 0
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -78,7 +84,7 @@ export const useRecordingStore = defineStore('recording', {
           const blob = new Blob(this._chunks, { type: 'audio/webm' })
           this.audioBlob = blob
           this.audioBlobUrl = URL.createObjectURL(blob)
-          this.durationMs = Date.now() - this._startTime
+          this.durationMs = Date.now() - this._startTime - this._pausedMs
           this.recordingState = 'stopped'
           this._stream?.getTracks().forEach(t => t.stop())
           this._stream = null
@@ -93,9 +99,38 @@ export const useRecordingStore = defineStore('recording', {
     },
 
     stopRecording(): void {
-      if (this._recorder && this._recorder.state === 'recording') {
+      if (!this._recorder) return
+      const state = this._recorder.state
+      if (state === 'paused') {
+        // Accumulate current pause segment before stopping
+        if (this._pauseStart > 0) {
+          this._pausedMs += Date.now() - this._pauseStart
+          this._pauseStart = 0
+        }
+        this._recorder.resume()
+        setTimeout(() => this._recorder?.stop(), 0)
+      } else if (state === 'recording') {
         this._recorder.stop()
-        // recordingState set to 'stopped' in onstop handler
+      }
+      // recordingState → 'stopped' set in onstop handler
+    },
+
+    pauseRecording(): void {
+      if (this._recorder && this._recorder.state === 'recording') {
+        this._recorder.pause()
+        this._pauseStart = Date.now()
+        this.recordingState = 'paused'
+      }
+    },
+
+    resumeRecording(): void {
+      if (this._recorder && this._recorder.state === 'paused') {
+        if (this._pauseStart > 0) {
+          this._pausedMs += Date.now() - this._pauseStart
+          this._pauseStart = 0
+        }
+        this._recorder.resume()
+        this.recordingState = 'recording'
       }
     },
 
@@ -113,6 +148,8 @@ export const useRecordingStore = defineStore('recording', {
       this.audioBlobUrl = null
       this.durationMs = 0
       this.recordingState = 'idle'
+      this._pausedMs = 0
+      this._pauseStart = 0
       this.resetLevelBars()
     },
   },

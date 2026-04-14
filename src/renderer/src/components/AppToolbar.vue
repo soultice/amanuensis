@@ -6,8 +6,8 @@
       <!-- ← Sessions button (Phase 8) -->
       <button
         class="toolbar__btn toolbar__btn--sessions"
-        :disabled="recordingStore.isRecording"
-        :title="recordingStore.isRecording ? 'Stop recording before leaving' : 'Back to sessions'"
+        :disabled="recordingStore.isActive"
+        :title="recordingStore.isActive ? 'Stop recording before leaving' : 'Back to sessions'"
         @click="emit('closeSession')"
       >
         ← Sessions
@@ -18,7 +18,7 @@
         v-if="recordingStore.devices.length > 0"
         v-model="recordingStore.selectedDeviceId"
         class="toolbar__device-select"
-        :disabled="recordingStore.isRecording"
+        :disabled="recordingStore.isActive"
         title="Audio input device"
       >
         <option
@@ -37,20 +37,20 @@
       <!-- Level meter — visible while recording (AUDIO-04) -->
       <LevelMeter :stream="activeStream" :active="recordingStore.isRecording" />
 
-      <!-- Record button (AUDIO-02) -->
+      <!-- Record/Pause/Resume toggle (AUDIO-02 + phase 11) -->
       <button
-        v-if="!recordingStore.isRecording"
-        class="toolbar__btn toolbar__btn--record"
-        :disabled="recordingStore.devices.length === 0"
-        title="Start recording"
-        @click="startRecording"
+        class="toolbar__btn"
+        :class="recordToggleClass"
+        :disabled="!recordingStore.isActive && recordingStore.devices.length === 0"
+        :title="recordToggleTitle"
+        @click="handleRecordToggle"
       >
-        ● Rec
+        {{ recordToggleLabel }}
       </button>
 
-      <!-- Stop button (AUDIO-03) -->
+      <!-- Stop button (AUDIO-03) — shown when recording OR paused -->
       <button
-        v-if="recordingStore.isRecording"
+        v-if="recordingStore.isActive"
         class="toolbar__btn toolbar__btn--stop"
         title="Stop recording"
         @click="recordingStore.stopRecording()"
@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRecordingStore } from '../stores/recording'
 import { useSessionStore } from '../stores/session'
 import { useTranscriptStore } from '../stores/transcript'
@@ -116,6 +116,35 @@ const sessionStore = useSessionStore()
 const transcriptStore = useTranscriptStore()
 const themeStore = useThemeStore()
 const activeStream = ref<MediaStream | null>(null)
+
+// Record/Pause/Resume toggle — derived from store state
+const recordToggleLabel = computed<string>(() => {
+  if (recordingStore.isRecording) return '⏸ Pause'
+  if (recordingStore.isPaused)    return '● Resume'
+  return '● Rec'
+})
+
+const recordToggleTitle = computed<string>(() => {
+  if (recordingStore.isRecording) return 'Pause recording'
+  if (recordingStore.isPaused)    return 'Resume recording'
+  return 'Start recording'
+})
+
+const recordToggleClass = computed<string>(() => {
+  if (recordingStore.isRecording) return 'toolbar__btn--pause'
+  if (recordingStore.isPaused)    return 'toolbar__btn--resume'
+  return 'toolbar__btn--record'
+})
+
+function handleRecordToggle(): void {
+  if (recordingStore.isRecording) {
+    recordingStore.pauseRecording()
+  } else if (recordingStore.isPaused) {
+    recordingStore.resumeRecording()
+  } else {
+    startRecording()
+  }
+}
 
 onMounted(() => recordingStore.loadDevices())
 
@@ -196,6 +225,20 @@ function playRecording(): void {
 }
 .toolbar__btn--record:hover:not(:disabled) {
   background: #a8201e;
+}
+.toolbar__btn--pause {
+  background: #b58900;
+  color: #fdf6e3;
+}
+.toolbar__btn--pause:hover:not(:disabled) {
+  background: #8a6800;
+}
+.toolbar__btn--resume {
+  background: var(--success);
+  color: #fdf6e3;
+}
+.toolbar__btn--resume:hover:not(:disabled) {
+  background: #6b7a00;
 }
 .toolbar__btn--stop {
   background: var(--text-em);
