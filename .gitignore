@@ -17,6 +17,14 @@ sidecar/**/*.pyc
 # Electron build
 dist-electron/
 release/
+dist-sidecar/
+build-sidecar/
+
+# Generated build assets (keep entitlements.mac.plist — hand-authored)
+build/icon.png
+build/icon.icns
+build/icon.ico
+build/icon.iconset/
 
 # Env
 .env
