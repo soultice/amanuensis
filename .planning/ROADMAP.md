@@ -20,7 +20,6 @@
 | 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete |
 | 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel | Complete |
 | 10 | Packaging & Distribution | Single installer per platform shipping Electron + frozen Python sidecar | Pending |
-| 11 | Replace Whisper with NVIDIA Canary Qwen 2.5B | Replace the transcription backend with nvidia canary qwen 2.5B | Pending |
 | 12 | Orange Record Button | Make the record button orange instead of red | Pending |
 | 13 | Pause & Resume Recordings | Pause and continue voice recordings to avoid silence on takes | Pending |
 
@@ -217,18 +216,7 @@
 
 ---
 
-## Phase 11: Replace Whisper with NVIDIA Canary Qwen 2.5B
-
-**Goal:** [To be planned]
-**Requirements:** TBD
-**Depends on:** Phase 10
-**Plans:** 0 plans
-
-- [ ] TBD (run `/gsd-plan-phase 11` to break down)
-
----
-
-## Phase 12: Orange Record Button
+## Phase 11: Orange Record Button
 
 **Goal:** [To be planned]
 **Requirements:** TBD
@@ -238,7 +226,7 @@
 
 ---
 
-## Phase 13: Pause & Resume Recordings
+## Phase 11: Pause & Resume Recordings
 
 **Goal:** [To be planned]
 **Requirements:** TBD
@@ -286,4 +274,4 @@
 **Coverage: 30/30 ✓**
 
 ---
-*Roadmap last cleaned: 2026-04-14*
+*Roadmap last cleaned: 2011-04-14*
