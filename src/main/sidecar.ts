@@ -45,6 +45,8 @@ export async function startSidecar(): Promise<number> {
     const binaryName = process.platform === 'win32' ? 'amanuensis-sidecar.exe' : 'amanuensis-sidecar'
     command = path.join(process.resourcesPath, 'sidecar', binaryName)
     args = ['--port', String(port), '--user-data', userDataDir]
+    console.log('[sidecar] production binary:', command)
+    console.log('[sidecar] userData:', userDataDir)
   }
 
   sidecarProcess = spawn(command, args, {
@@ -54,10 +56,16 @@ export async function startSidecar(): Promise<number> {
   })
 
   sidecarProcess.stderr?.on('data', (data: Buffer) => {
-    // uvicorn logs go to stderr; only log on error level
-    const msg = data.toString()
-    if (msg.includes('ERROR') || msg.includes('error')) {
-      console.error('[sidecar]', msg.trim())
+    const msg = data.toString().trim()
+    if (!msg) return
+    if (is.dev) {
+      // In development: pass through all sidecar output for debugging
+      console.log('[sidecar]', msg)
+    } else {
+      // In production: only surface errors
+      if (msg.includes('ERROR') || msg.includes('CRITICAL') || msg.includes('error')) {
+        console.error('[sidecar]', msg)
+      }
     }
   })
 

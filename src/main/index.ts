@@ -216,6 +216,10 @@ app.whenReady().then(async () => {
       if (win && !win.isDestroyed()) {
         win.webContents.send('sidecar:error', err.message)
       }
+      dialog.showErrorBox(
+        'Amanuensis — Startup Error',
+        `The transcription engine failed to start:\n\n${err.message}\n\nPlease reinstall the application.`
+      )
     })
 
   app.on('activate', () => {

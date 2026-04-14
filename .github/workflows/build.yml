@@ -1,0 +1,73 @@
+name: Build macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: Build macOS (ARM64)
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Python dependencies
+        working-directory: sidecar
+        run: poetry install --no-interaction
+
+      - name: Install PyInstaller
+        working-directory: sidecar
+        run: poetry run pip install pyinstaller
+
+      - name: Build sidecar (PyInstaller)
+        run: npm run build:sidecar
+
+      - name: Build Electron app
+        run: npm run build
+
+      - name: Package with electron-builder
+        run: npm run build:electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Amanuensis-macOS-DMG
+          path: release/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Amanuensis-macOS-ZIP
+          path: release/*.zip
+          if-no-files-found: warn
+          retention-days: 14
