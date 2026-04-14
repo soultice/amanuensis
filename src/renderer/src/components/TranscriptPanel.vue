@@ -58,7 +58,7 @@
             @dragover.prevent="dragOverWordIndex = word.id"
             @dragleave="dragOverWordIndex = null"
             @drop="handleDrop($event, word.id)"
-          >{{ word.word }}</span>
+          >{{ word.word.trimEnd() }}</span>
           <!-- Superscript badge after the LAST word of an annotated range (D-04) -->
           <sup
             v-if="annotationStore.badgeAtWord(word.id) !== null"
