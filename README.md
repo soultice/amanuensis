@@ -146,3 +146,4 @@ npm run build
 The renderer (Vue 3) communicates with the Electron main process via a typed `window.api` bridge (contextBridge). The main process spawns the Python FastAPI sidecar on startup, discovers a free port with `get-port`, and polls `/health` before marking the sidecar as ready. All communication with the sidecar from the renderer goes directly via HTTP to `localhost:{port}` (not through Electron IPC) to avoid serialisation overhead for large audio files.
 
 Security: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
+# amanuensis
