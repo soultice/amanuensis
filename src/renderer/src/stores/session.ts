@@ -33,8 +33,9 @@ export const useSessionStore = defineStore('session', {
     autoSaveIntervalId: null as ReturnType<typeof setInterval> | null,
     cleanupSaveAndQuit: null as (() => void) | null,
     audioFileMissing: false,
-    lastSavedAt: 0 as number,           // Date.now() timestamp of last successful save; 0 = never saved
-    autoSavePeriodMs: 30_000 as number, // exposed so UI can read interval length without hardcoding
+    lastSavedAt: 0 as number,
+    autoSavePeriodMs: 30_000 as number,
+    sessionName: '' as string,          // display name of the active session; '' when no session open
   }),
 
   actions: {
@@ -53,6 +54,15 @@ export const useSessionStore = defineStore('session', {
       const raw = await window.api.openSession(id)
       this.currentSessionId = id
       this.audioFileMissing = false
+
+      // Load session name from index
+      try {
+        const sessions = await window.api.listSessions()
+        const meta = sessions.find(s => s.id === id)
+        this.sessionName = meta?.name ?? 'Untitled session'
+      } catch {
+        this.sessionName = 'Untitled session'
+      }
 
       if (!raw) return
       try {
@@ -181,6 +191,7 @@ export const useSessionStore = defineStore('session', {
       const id = await this.createSession()
       // Set currentSessionId directly — no data to restore for an empty session
       this.currentSessionId = id
+      this.sessionName = 'Untitled session'
     },
 
     /** Close the active session: save, reset all stores, clear currentSessionId */
@@ -188,6 +199,7 @@ export const useSessionStore = defineStore('session', {
       await this.save()
       this._resetStores()
       this.currentSessionId = null
+      this.sessionName = ''
       this.audioFileMissing = false
     },
 
@@ -225,6 +237,13 @@ export const useSessionStore = defineStore('session', {
     unregisterSaveOnClose(): void {
       this.cleanupSaveAndQuit?.()
       this.cleanupSaveAndQuit = null
+    },
+
+    async renameSession(name: string): Promise<void> {
+      if (!this.currentSessionId) return
+      const trimmed = name.trim() || 'Untitled session'
+      await window.api.renameSession(this.currentSessionId, trimmed)
+      this.sessionName = trimmed
     },
   },
 })

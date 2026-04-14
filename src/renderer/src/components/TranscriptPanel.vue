@@ -1,6 +1,26 @@
 <template>
   <div class="transcript-panel">
 
+    <!-- Editable session title (Phase 13) -->
+    <div v-if="sessionStore.currentSessionId" class="session-title">
+      <input
+        v-if="editingTitle"
+        class="session-title__input"
+        v-model="titleDraft"
+        @blur="commitTitleEdit"
+        @keydown.enter.prevent="commitTitleEdit"
+        @keydown.escape.prevent="cancelTitleEdit"
+        maxlength="100"
+        aria-label="Session title"
+      />
+      <h2
+        v-else
+        class="session-title__display"
+        @click="startTitleEdit"
+        title="Click to rename session"
+      >{{ sessionStore.sessionName || 'Untitled session' }}</h2>
+    </div>
+
     <!-- Empty state — unchanged from Phase 2 -->
     <div v-if="transcriptStore.transcriptState === 'empty'" class="transcript-panel__empty">
       <p>Record audio and click <strong>Transcribe</strong> to see the transcript here.</p>
@@ -82,20 +102,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useTranscriptStore } from '../stores/transcript'
 import { usePlaybackStore } from '../stores/playback'
 import { useAnnotationStore } from '../stores/annotation'
+import { useSessionStore } from '../stores/session'
 import type { Annotation } from '../stores/annotation'
 import AnnotationDialog from './AnnotationDialog.vue'
 
 const transcriptStore = useTranscriptStore()
 const playbackStore = usePlaybackStore()
+const sessionStore = useSessionStore()
 const annotationStore = useAnnotationStore()
 
 const showDialog = ref(false)
 const editingAnnotation = ref<Annotation | null>(null)
 const dragOverWordIndex = ref<number | null>(null)
+
+// Editable session title (Phase 13)
+const editingTitle = ref(false)
+const titleDraft = ref('')
+
+function startTitleEdit(): void {
+  titleDraft.value = sessionStore.sessionName
+  editingTitle.value = true
+  nextTick(() => {
+    const input = document.querySelector<HTMLInputElement>('.session-title__input')
+    input?.select()
+  })
+}
+
+async function commitTitleEdit(): Promise<void> {
+  if (!editingTitle.value) return
+  editingTitle.value = false
+  const name = titleDraft.value.trim() || 'Untitled session'
+  if (name !== sessionStore.sessionName) {
+    await sessionStore.renameSession(name)
+  }
+}
+
+function cancelTitleEdit(): void {
+  editingTitle.value = false
+  titleDraft.value = ''
+}
 
 // D-11: check if current selection overlaps any existing annotation
 const selectionOverlaps = computed((): boolean => {
@@ -158,11 +207,46 @@ function formatDuration(seconds: number): string {
 <style scoped>
 /* ---- Layout shell ---- */
 .transcript-panel {
-  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
+}
+
+/* Session title (Phase 13) */
+.session-title {
+  padding: 8px 16px 4px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.session-title__display {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-em);
+  margin: 0;
+  cursor: text;
+  border-radius: 3px;
+  padding: 2px 4px;
+  display: inline-block;
+}
+.session-title__display:hover {
+  background: rgba(var(--accent-rgb), 0.06);
+}
+.session-title__input {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-em);
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 2px 4px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
 }
 
 /* ---- Reading column (D-06) ---- */

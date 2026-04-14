@@ -840,5 +840,1165 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 66 to break down)
 
+### Phase 67: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 66
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 67 to break down)
+
+### Phase 68: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 67
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 68 to break down)
+
+### Phase 69: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 68
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 69 to break down)
+
+### Phase 70: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 69
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 70 to break down)
+
+### Phase 71: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 70
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 71 to break down)
+
+### Phase 72: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 71
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 72 to break down)
+
+### Phase 73: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 72
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 73 to break down)
+
+### Phase 74: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 73
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 74 to break down)
+
+### Phase 75: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 74
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 75 to break down)
+
+### Phase 76: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 75
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 76 to break down)
+
+### Phase 77: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 76
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 77 to break down)
+
+### Phase 78: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 77
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 78 to break down)
+
+### Phase 79: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 78
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 79 to break down)
+
+### Phase 80: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 79
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 80 to break down)
+
+### Phase 81: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 80
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 81 to break down)
+
+### Phase 82: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 81
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 82 to break down)
+
+### Phase 83: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 82
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 83 to break down)
+
+### Phase 84: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 83
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 84 to break down)
+
+### Phase 85: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 84
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 85 to break down)
+
+### Phase 86: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 85
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 86 to break down)
+
+### Phase 87: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 86
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 87 to break down)
+
+### Phase 88: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 87
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 88 to break down)
+
+### Phase 89: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 88
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 89 to break down)
+
+### Phase 90: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 89
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 90 to break down)
+
+### Phase 91: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 90
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 91 to break down)
+
+### Phase 92: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 91
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 92 to break down)
+
+### Phase 93: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 92
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 93 to break down)
+
+### Phase 94: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 93
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 94 to break down)
+
+### Phase 95: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 94
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 95 to break down)
+
+### Phase 96: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 95
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 96 to break down)
+
+### Phase 97: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 96
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 97 to break down)
+
+### Phase 98: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 97
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 98 to break down)
+
+### Phase 99: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 98
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 99 to break down)
+
+### Phase 100: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 99
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 100 to break down)
+
+### Phase 101: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 100
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 101 to break down)
+
+### Phase 102: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 101
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 102 to break down)
+
+### Phase 103: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 102
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 103 to break down)
+
+### Phase 104: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 103
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 104 to break down)
+
+### Phase 105: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 104
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 105 to break down)
+
+### Phase 106: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 105
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 106 to break down)
+
+### Phase 107: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 106
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 107 to break down)
+
+### Phase 108: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 107
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 108 to break down)
+
+### Phase 109: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 108
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 109 to break down)
+
+### Phase 110: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 109
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 110 to break down)
+
+### Phase 111: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 110
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 111 to break down)
+
+### Phase 112: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 111
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 112 to break down)
+
+### Phase 113: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 112
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 113 to break down)
+
+### Phase 114: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 113
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 114 to break down)
+
+### Phase 115: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 114
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 115 to break down)
+
+### Phase 116: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 115
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 116 to break down)
+
+### Phase 117: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 116
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 117 to break down)
+
+### Phase 118: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 117
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 118 to break down)
+
+### Phase 119: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 118
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 119 to break down)
+
+### Phase 120: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 119
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 120 to break down)
+
+### Phase 121: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 120
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 121 to break down)
+
+### Phase 122: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 121
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 122 to break down)
+
+### Phase 123: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 122
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 123 to break down)
+
+### Phase 124: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 123
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 124 to break down)
+
+### Phase 125: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 124
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 125 to break down)
+
+### Phase 126: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 125
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 126 to break down)
+
+### Phase 127: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 126
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 127 to break down)
+
+### Phase 128: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 127
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 128 to break down)
+
+### Phase 129: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 128
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 129 to break down)
+
+### Phase 130: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 129
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 130 to break down)
+
+### Phase 131: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 130
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 131 to break down)
+
+### Phase 132: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 131
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 132 to break down)
+
+### Phase 133: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 132
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 133 to break down)
+
+### Phase 134: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 133
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 134 to break down)
+
+### Phase 135: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 134
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 135 to break down)
+
+### Phase 136: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 135
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 136 to break down)
+
+### Phase 137: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 136
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 137 to break down)
+
+### Phase 138: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 137
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 138 to break down)
+
+### Phase 139: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 138
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 139 to break down)
+
+### Phase 140: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 139
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 140 to break down)
+
+### Phase 141: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 140
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 141 to break down)
+
+### Phase 142: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 141
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 142 to break down)
+
+### Phase 143: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 142
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 143 to break down)
+
+### Phase 144: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 143
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 144 to break down)
+
+### Phase 145: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 144
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 145 to break down)
+
+### Phase 146: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 145
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 146 to break down)
+
+### Phase 147: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 146
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 147 to break down)
+
+### Phase 148: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 147
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 148 to break down)
+
+### Phase 149: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 148
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 149 to break down)
+
+### Phase 150: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 149
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 150 to break down)
+
+### Phase 151: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 150
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 151 to break down)
+
+### Phase 152: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 151
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 152 to break down)
+
+### Phase 153: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 152
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 153 to break down)
+
+### Phase 154: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 153
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 154 to break down)
+
+### Phase 155: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 154
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 155 to break down)
+
+### Phase 156: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 155
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 156 to break down)
+
+### Phase 157: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 156
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 157 to break down)
+
+### Phase 158: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 157
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 158 to break down)
+
+### Phase 159: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 158
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 159 to break down)
+
+### Phase 160: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 159
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 160 to break down)
+
+### Phase 161: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 160
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 161 to break down)
+
+### Phase 162: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 161
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 162 to break down)
+
+### Phase 163: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 162
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 163 to break down)
+
+### Phase 164: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 163
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 164 to break down)
+
+### Phase 165: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 164
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 165 to break down)
+
+### Phase 166: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 165
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 166 to break down)
+
+### Phase 167: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 166
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 167 to break down)
+
+### Phase 168: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 167
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 168 to break down)
+
+### Phase 169: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 168
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 169 to break down)
+
+### Phase 170: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 169
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 170 to break down)
+
+### Phase 171: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 170
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 171 to break down)
+
+### Phase 172: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 171
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 172 to break down)
+
+### Phase 173: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 172
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 173 to break down)
+
+### Phase 174: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 173
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 174 to break down)
+
+### Phase 175: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 174
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 175 to break down)
+
+### Phase 176: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 175
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 176 to break down)
+
+### Phase 177: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 176
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 177 to break down)
+
+### Phase 178: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 177
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 178 to break down)
+
+### Phase 179: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 178
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 179 to break down)
+
+### Phase 180: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 179
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 180 to break down)
+
+### Phase 181: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 180
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 181 to break down)
+
+### Phase 182: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 181
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 182 to break down)
+
 ---
 *Roadmap last cleaned: 2026-04-14*

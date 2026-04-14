@@ -155,7 +155,8 @@ async function exportMarkdown(): Promise<void> {
     wordMarker.set(ann.wordEndIdx, marker)
   }
 
-  const lines: string[] = ['# Transcript', '']
+  const title = sessionStore.sessionName?.trim() || 'Transcript'
+  const lines: string[] = [`# ${title}`, '']
   for (const segment of segments) {
     const segWords = words.filter(w => w.segmentId === segment.id)
     let buffer = ''

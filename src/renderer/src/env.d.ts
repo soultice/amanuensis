@@ -37,6 +37,8 @@ declare global {
       fileExists(filePath: string): Promise<boolean>
       saveAndQuit(): Promise<void>
       onSaveAndQuit(cb: () => void): () => void
+      // Phase 13 — Session rename
+      renameSession(id: string, name: string): Promise<void>
     }
   }
 }

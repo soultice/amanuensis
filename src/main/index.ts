@@ -334,8 +334,7 @@ ipcMain.handle('session:list', async () => {
 ipcMain.handle('session:create', async () => {
   const id = crypto.randomUUID()
   const now = new Date()
-  const pad = (n: number): string => String(n).padStart(2, '0')
-  const name = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+  const name = 'Untitled session'
 
   const sessionDir = join(app.getPath('userData'), 'sessions', id)
   const assetsDir = join(sessionDir, 'assets')
@@ -361,6 +360,17 @@ ipcMain.handle('session:delete', async (_event, id: string) => {
   try { await fsPromises.rm(sessionDir, { recursive: true, force: true }) } catch { /* ignore */ }
   const index = await readSessionIndex()
   await writeSessionIndex(index.filter(s => s.id !== id))
+})
+
+ipcMain.handle('session:rename', async (_event, id: string, name: string) => {
+  const trimmed = name.trim()
+  if (!trimmed) return
+  const index = await readSessionIndex()
+  const entry = index.find(s => s.id === id)
+  if (!entry) return
+  entry.name = trimmed
+  entry.updatedAt = new Date().toISOString()
+  await writeSessionIndex(index)
 })
 
 ipcMain.handle('session:save', async (_event, payload: { id: string; data: string }) => {

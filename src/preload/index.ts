@@ -81,5 +81,9 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (): void => cb()
     ipcRenderer.on('app:save-and-quit', handler)
     return () => ipcRenderer.removeListener('app:save-and-quit', handler)
-  }
+  },
+
+  // Phase 13 — Session rename
+  renameSession: (id: string, name: string): Promise<void> =>
+    ipcRenderer.invoke('session:rename', id, name),
 })
