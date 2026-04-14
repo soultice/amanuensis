@@ -254,16 +254,6 @@
 Plans:
 - [ ] TBD (run /gsd-plan-phase 11 to break down)
 
-### Phase 13: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 12
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 13 to break down)
-
 ---
 
 ## Phase 12: Replace Transcription Backend with NVIDIA Canary Qwen 2.5B
@@ -274,6 +264,28 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 12 to break down)
+
+### Phase 13: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)
+
+### Phase 14: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
+
+---
 
 ## Phase 10: Packaging & Distribution
 
