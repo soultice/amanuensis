@@ -216,16 +216,6 @@
 
 ---
 
-## Phase 11: Orange Record Button
-
-**Goal:** [To be planned]
-**Requirements:** TBD
-**Plans:** 0 plans
-
-- [ ] TBD (run `/gsd-plan-phase 12` to break down)
-
----
-
 ## Phase 11: Pause & Resume Recordings
 
 **Goal:** [To be planned]
