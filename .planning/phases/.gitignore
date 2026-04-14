@@ -1,4 +1,4 @@
-# Block rogue duplicate phase directories (>11)
-1[2-9]-*
+# Block duplicate phase directories beyond the 13 planned phases
+1[4-9]-*
 [2-9][0-9]-*
 [1-9][0-9][0-9]-*
