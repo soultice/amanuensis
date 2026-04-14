@@ -340,5 +340,85 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 16 to break down)
 
+### Phase 17: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 17 to break down)
+
+### Phase 18: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 17
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
+### Phase 19: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 18
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 19 to break down)
+
+### Phase 20: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 19
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 20 to break down)
+
+### Phase 21: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 20
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 21 to break down)
+
+### Phase 22: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 21
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 22 to break down)
+
+### Phase 23: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 22
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 23 to break down)
+
+### Phase 24: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 23
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 24 to break down)
+
 ---
 *Roadmap last cleaned: 2026-04-14*
