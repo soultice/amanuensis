@@ -20,8 +20,8 @@
 | 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete |
 | 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel | Complete |
 | 10 | Packaging & Distribution | Single installer per platform shipping Electron + frozen Python sidecar | Pending |
-| 12 | Orange Record Button | Make the record button orange instead of red | Pending |
-| 13 | Pause & Resume Recordings | Pause and continue voice recordings to avoid silence on takes | Pending |
+| 12 | Auto-Save Indicator & Manual Save Trigger | Auto-save countdown + manual save button | Pending |
+| 13 | Editable Session Title | User can rename sessions; export reflects title | Pending |
 
 ---
 
@@ -272,5 +272,107 @@
 
 **Coverage: 30/30 ✓**
 
+### Phase 12: Auto-Save Indicator & Manual Save Trigger
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12 to break down)
+
 ---
-*Roadmap last cleaned: 2011-04-14*
+
+### Phase 13: Editable Session Title
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)
+
+### Phase 14: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
+
+### Phase 15: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 14
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 15 to break down)
+
+### Phase 16: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16 to break down)
+
+### Phase 17: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 17 to break down)
+
+### Phase 18: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 17
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
+### Phase 19: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 18
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 19 to break down)
+
+### Phase 20: "I want a visual indicator that shows how long the next auto save is away and allows me to manually trigger the safe myself"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 19
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 20 to break down)
+
+### Phase 21: "I want to be able to edit the title of a session, the exported markdown file should also reflect that tile"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 20
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 21 to break down)
+
+---
+*Roadmap last cleaned: 2026-04-14*
