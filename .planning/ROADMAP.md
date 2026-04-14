@@ -285,15 +285,5 @@
 
 **Coverage: 30/30 ✓**
 
-### Phase 14: "I want to be able to pause and continue voice recordings so there is not too much silence on my takes."
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 13
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
-
 ---
 *Roadmap last cleaned: 2026-04-14*
