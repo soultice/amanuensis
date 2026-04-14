@@ -20,7 +20,6 @@
 | 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete    | 2011-04-13 |
 | 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel | Complete | 2011-04-13 |
 | 10 | Packaging & Distribution | Single installer per platform shipping Electron + frozen Python sidecar | Pending | 2011-04-13 |
-| 11 | Replace Transcription Backend with NVIDIA Canary Qwen 2.5B | Replace Whisper with NVIDIA Canary Qwen 2.5B | Pending | 2026-04-14 |
 
 ---
 
@@ -224,38 +223,6 @@
 
 *(empty)*
 
-### Phase 12: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 11
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 12 to break down)
-
-### Phase 13: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 12
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 13 to break down)
-
-### Phase 14: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 13
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
-
----
-
 ## Phase 9: UI Overhaul
 
 **Goal:** Replace ad-hoc utility styles with a coherent Solarized-based design system (light and dark modes), and optimise the transcript panel for comfortable long-form reading (measure, leading, font).
@@ -273,15 +240,6 @@ Plans:
 5. Session list view and onboarding view are also reskinned
 6. No regression in existing functionality — typecheck and manual smoke test pass
 
-
-## Phase 11: Replace Transcription Backend with NVIDIA Canary Qwen 2.5B
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 11 to break down)
 
 ## Phase 10: Packaging & Distribution
 
