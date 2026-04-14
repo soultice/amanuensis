@@ -218,11 +218,20 @@
 
 ## Phase 11: Pause & Resume Recordings
 
-**Goal:** [To be planned]
-**Requirements:** TBD
-**Plans:** 0 plans
+**Goal:** User can pause an active recording and resume it; silence during pause is excluded from the audio file so the transcript is seamless.
 
-- [ ] TBD (run `/gsd-plan-phase 13` to break down)
+**Requirements:** *(extends AUDIO-02, AUDIO-03 from Phase 2)*
+
+**Plans:**
+0/2 plans complete
+
+**Success Criteria:**
+1. While recording, the record button changes to "⏸ Pause" and clicking it suspends audio capture
+2. While paused, the button shows "● Resume" and clicking it resumes capture
+3. The Stop button remains available during both recording and paused states
+4. The level meter is frozen (inactive) while paused
+5. The final audio blob contains no silence from pause periods
+6. Reported recording duration excludes time spent paused
 
 ---
 
