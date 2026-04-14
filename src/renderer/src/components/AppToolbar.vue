@@ -103,6 +103,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRecordingStore } from '../stores/recording'
+import { useSessionStore } from '../stores/session'
+import { useTranscriptStore } from '../stores/transcript'
 import { useThemeStore } from '../stores/theme'
 import LevelMeter from './LevelMeter.vue'
 
@@ -110,12 +112,19 @@ const props = defineProps<{ isTranscribing: boolean }>()
 const emit = defineEmits<{ transcribe: []; closeSession: [] }>()
 
 const recordingStore = useRecordingStore()
+const sessionStore = useSessionStore()
+const transcriptStore = useTranscriptStore()
 const themeStore = useThemeStore()
 const activeStream = ref<MediaStream | null>(null)
 
 onMounted(() => recordingStore.loadDevices())
 
 async function startRecording(): Promise<void> {
+  // If the current session already has content (recording or transcript),
+  // save it and branch into a fresh session before recording again.
+  if (recordingStore.isStopped || transcriptStore.hasTranscript) {
+    await sessionStore.newSession()
+  }
   await recordingStore.startRecording()
   // Expose live stream to LevelMeter component
   activeStream.value = recordingStore._stream

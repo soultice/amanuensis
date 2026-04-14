@@ -167,6 +167,19 @@ export const useSessionStore = defineStore('session', {
       }
     },
 
+    /**
+     * Save the current session, reset all stores, then create and open a brand-new
+     * session — all without transitioning through SessionListView.
+     */
+    async newSession(): Promise<void> {
+      await this.save()
+      this._resetStores()
+      this.audioFileMissing = false
+      const id = await this.createSession()
+      // Set currentSessionId directly — no data to restore for an empty session
+      this.currentSessionId = id
+    },
+
     /** Close the active session: save, reset all stores, clear currentSessionId */
     async closeSession(): Promise<void> {
       await this.save()
