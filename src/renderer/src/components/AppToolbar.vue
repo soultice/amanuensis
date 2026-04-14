@@ -88,6 +88,17 @@
         ⚠ {{ recordingStore.error.slice(0, 40) }}
       </span>
 
+      <!-- Auto-save progress bar (Phase 12) -->
+      <button
+        v-if="sessionStore.currentSessionId"
+        class="save-bar"
+        :title="saveBarTitle"
+        @click="manualSave"
+        aria-label="Save now"
+      >
+        <span class="save-bar__fill" :style="{ width: (saveProgress * 100) + '%' }" />
+      </button>
+
       <!-- Phase 9: dark mode toggle -->
       <button
         class="toolbar__btn toolbar__btn--theme"
@@ -101,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRecordingStore } from '../stores/recording'
 import { useSessionStore } from '../stores/session'
 import { useTranscriptStore } from '../stores/transcript'
@@ -116,6 +127,30 @@ const sessionStore = useSessionStore()
 const transcriptStore = useTranscriptStore()
 const themeStore = useThemeStore()
 const activeStream = ref<MediaStream | null>(null)
+
+// Auto-save progress bar (Phase 12)
+const saveProgress = ref(0)  // 0.0 – 1.0
+let rafId: number | null = null
+
+function animateSaveBar(): void {
+  const elapsed = Date.now() - sessionStore.lastSavedAt
+  const period = sessionStore.autoSavePeriodMs
+  saveProgress.value = Math.min(elapsed / period, 1)
+  rafId = requestAnimationFrame(animateSaveBar)
+}
+
+onMounted(() => { animateSaveBar() })
+onUnmounted(() => { if (rafId !== null) cancelAnimationFrame(rafId) })
+
+async function manualSave(): Promise<void> {
+  await sessionStore.save()
+}
+
+const saveBarTitle = computed<string>(() => {
+  const remaining = Math.ceil((sessionStore.autoSavePeriodMs - (Date.now() - sessionStore.lastSavedAt)) / 1000)
+  const secs = Math.max(remaining, 0)
+  return `Next auto-save in ${secs}s — click to save now`
+})
 
 // Record/Pause/Resume toggle — derived from store state
 const recordToggleLabel = computed<string>(() => {
@@ -294,5 +329,30 @@ function playRecording(): void {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Auto-save progress bar (Phase 12) */
+.save-bar {
+  position: relative;
+  width: 48px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-hl);
+  border: 1px solid var(--border);
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.save-bar:hover {
+  border-color: var(--accent);
+}
+.save-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: none;
 }
 </style>

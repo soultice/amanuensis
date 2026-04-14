@@ -33,6 +33,8 @@ export const useSessionStore = defineStore('session', {
     autoSaveIntervalId: null as ReturnType<typeof setInterval> | null,
     cleanupSaveAndQuit: null as (() => void) | null,
     audioFileMissing: false,
+    lastSavedAt: 0 as number,           // Date.now() timestamp of last successful save; 0 = never saved
+    autoSavePeriodMs: 30_000 as number, // exposed so UI can read interval length without hardcoding
   }),
 
   actions: {
@@ -162,6 +164,7 @@ export const useSessionStore = defineStore('session', {
           recordingStore.audioBlobUrl = `asset://localhost/${filename}`
         }
         await window.api.saveSession(this.currentSessionId, this.buildSessionData())
+        this.lastSavedAt = Date.now()
       } catch (err) {
         console.error('[session] Auto-save failed:', err)
       }
@@ -201,6 +204,7 @@ export const useSessionStore = defineStore('session', {
 
     startAutoSave(): void {
       this.stopAutoSave()
+      this.lastSavedAt = Date.now()  // treat session open as a save baseline
       this.autoSaveIntervalId = setInterval(() => { this.save() }, 30_000)
     },
 
