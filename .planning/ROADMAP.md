@@ -18,6 +18,10 @@
 | 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | Complete    | 2011-04-13 |
 | 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown (text / image / text) | Complete | 2011-04-13 |
 | 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete    | 2011-04-13 |
+| 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel | Complete | 2026-04-13 |
+| 10 | Packaging & Distribution | Single installer per platform shipping Electron + frozen Python sidecar | Pending | 2026-04-13 |
+| 11 | Replace Transcription Backend with Fish Audio S2 Pro | Replace Whisper with Fish Audio S2 Pro | Pending | 2026-04-14 |
+| 12 | Replace Transcription Backend with NVIDIA Canary Qwen 2.5B | Replace Whisper with NVIDIA Canary Qwen 2.5B | Pending | 2026-04-14 |
 
 ---
 
@@ -240,6 +244,77 @@
 5. Session list view and onboarding view are also reskinned
 6. No regression in existing functionality — typecheck and manual smoke test pass
 
+
+## Phase 11: Replace Transcription Backend with Fish Audio S2 Pro
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 11 to break down)
+
+---
+
+## Phase 12: Replace Transcription Backend with NVIDIA Canary Qwen 2.5B
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12 to break down)
+
+### Phase 13: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)
+
+### Phase 14: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
+
+### Phase 15: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 14
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 15 to break down)
+
+### Phase 16: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16 to break down)
+
+### Phase 17: "replace whisper / the transcription backend with nvidia canary qwen 2.5B"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 17 to break down)
+
 ---
 
 ## Phase 10: Packaging & Distribution
@@ -259,5 +334,3 @@
 5. No user needs Python, Node, or any runtime pre-installed
 6. GitHub Actions workflow builds and uploads the `.dmg` artifact on push to `main`
 
-
----
