@@ -8,18 +8,21 @@
 
 ## Phase Overview
 
-| # | Phase | Goal | Requirements | Plans |
-|---|---|---|---|---|
-| 1 | Foundation | Working Electron app with Python sidecar connected and health-checked | Complete    | 2011-04-12 |
-| 2 | Audio & Transcription | User can record audio and receive a word-level transcript | Complete    | 2011-04-12 |
-| 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | Complete    | 2011-04-12 |
-| 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | Complete    | 2011-04-12 |
-| 5 | Export & Packaging | User can export Markdown docs and install the app | Complete    | 2011-04-12 |
-| 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | Complete    | 2011-04-13 |
-| 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown (text / image / text) | Complete | 2011-04-13 |
-| 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete    | 2011-04-13 |
-| 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel | Complete | 2011-04-13 |
-| 10 | Packaging & Distribution | Single installer per platform shipping Electron + frozen Python sidecar | Pending | 2011-04-13 |
+| # | Phase | Goal | Status |
+|---|---|---|---|
+| 1 | Foundation | Working Electron app with Python sidecar connected and health-checked | Complete |
+| 2 | Audio & Transcription | User can record audio and receive a word-level transcript | Complete |
+| 3 | Transcript & Waveform | User can navigate the transcript and audio in sync | Complete |
+| 4 | Annotations & Persistence | User can annotate word ranges and session persists across relaunches | Complete |
+| 5 | Export & Packaging | User can export Markdown docs and install the app | Complete |
+| 6 | Bug Fixing | End-to-end bug audit and fixes for full app usability | Complete |
+| 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown | Complete |
+| 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete |
+| 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel | Complete |
+| 10 | Packaging & Distribution | Single installer per platform shipping Electron + frozen Python sidecar | Pending |
+| 11 | Replace Whisper with NVIDIA Canary Qwen 2.5B | Replace the transcription backend with nvidia canary qwen 2.5B | Pending |
+| 12 | Orange Record Button | Make the record button orange instead of red | Pending |
+| 13 | Pause & Resume Recordings | Pause and continue voice recordings to avoid silence on takes | Pending |
 
 ---
 
@@ -51,7 +54,8 @@
 
 **Plans:**
 2/2 plans complete
-2. Transcription pipeline — WebM→WAV conversion in sidecar, faster-whisper large-v3 transcription, word timestamps, progress SSE, transcript display
+   1. Audio capture — device enumeration, MediaRecorder, level meter
+   2. Transcription pipeline — WebM→WAV conversion, faster-whisper large-v3, word timestamps, progress SSE, transcript display
 
 **Success Criteria:**
 1. User sees a dropdown listing all available audio input devices and can select one
@@ -89,13 +93,14 @@
 
 **Plans:**
 2/2 plans complete
-2. Session persistence — atomic JSON save every 30s, save-on-close, restore on launch (audio path, transcript, annotations)
+   1. Annotation CRUD — image/text/link/audio types, non-overlapping enforcement, dialog UI
+   2. Session persistence — atomic JSON save every 30s, save-on-close, restore on launch
 
 **Success Criteria:**
 1. Selecting a word range and clicking "Add annotation" opens a `<dialog>` positioned adjacent to the selection
-2. User can paste an image from clipboard or pick one from disk — it appears attached to the word range in the transcript view
-3. User can paste a URL from clipboard — it appears as a hyperlink annotation
-4. Selecting a word range that overlaps an existing annotation is blocked with a clear visual indicator
+2. User can paste an image from clipboard or pick one from disk — it appears attached to the word range
+3. User can paste a URL — it appears as a hyperlink annotation
+4. Overlapping annotations are blocked with a clear visual indicator
 5. Closing and relaunching the app restores the transcript and all annotations exactly
 6. Session auto-saves every 30s; a force-quit does not corrupt the session file
 
@@ -109,14 +114,137 @@
 
 **Plans:**
 2/2 plans complete
-2. Cross-platform packaging — PyInstaller sidecar binary, electron-builder config, macOS entitlements, CI build for macOS/Windows/Linux
+   1. Markdown export — transcript text, image/link/text/audio annotations at correct positions
+   2. Cross-platform packaging — PyInstaller sidecar binary, electron-builder config, macOS entitlements
 
 **Success Criteria:**
 1. User can trigger export via a button and choose an output directory via a native dialog
-2. Exported `.md` contains transcript text with image annotations rendered as `![description](assets/filename.png)` at the correct position
+2. Exported `.md` contains transcript text with image annotations as `![description](assets/filename.png)`
 3. Hyperlink annotations appear as `[text](url)` at the correct position
-4. Other annotation types (text, audio) appear as Markdown footnotes at the correct position
-5. App packages successfully into a `.dmg` (macOS), `.exe` installer (Windows), and `.AppImage` (Linux) with no Python installation required on the target machine
+4. Other annotation types appear as Markdown footnotes at the correct position
+5. App packages into `.dmg` (macOS), `.exe` (Windows), and `.AppImage` (Linux) with no Python required
+
+---
+
+## Phase 6: Bug Fixing
+
+**Goal:** Audit the app end-to-end for runtime bugs across all phases and fix them so the app is functionally usable.
+
+**Requirements:** *(gap-closure — no new requirements, validates existing phases 1–5)*
+
+**Plans:**
+1/1 plans complete
+
+**Success Criteria:**
+1. App launches without errors
+2. Recording and transcription work end-to-end
+3. Word click-to-seek and selection work in the transcript
+4. Annotations can be created, edited, and removed
+5. Session saves and restores correctly across relaunches
+
+---
+
+## Phase 7: Image Export Formatting
+
+**Goal:** When exporting to Markdown, image annotations must not be inline — they must be rendered as block elements: the preceding transcript text ends on its own line, the image appears on its own line, and the following text begins on a new line.
+
+**Requirements:** *(refinement of EXPORT-02)*
+
+**Plans:**
+1/1 plans complete
+
+**Success Criteria:**
+1. Exported `.md` renders images as block-level elements — each image is preceded and followed by a blank line
+2. No transcript text appears on the same line as an image tag
+3. Existing text and hyperlink annotation formatting is unaffected
+
+---
+
+## Phase 8: Session Management
+
+**Goal:** Allow users to maintain multiple transcript sessions simultaneously. A user can close the current session (saving all state), browse a list of past sessions, and open any of them to continue work — or start a fresh session from scratch.
+
+**Requirements:** *(extends SESSION-01–03 from Phase 4)*
+
+**Plans:**
+3/3 plans complete
+
+**Success Criteria:**
+1. User can see a list of all saved sessions (title, date, word count)
+2. User can open any past session and resume annotation where they left off
+3. User can close the current session and return to the session list
+4. User can create a brand-new session from the session list
+5. Switching sessions preserves all annotation and transcript data for the closed session
+6. App opens to the session list on relaunch
+
+---
+
+## Phase 9: UI Overhaul
+
+**Goal:** Replace ad-hoc utility styles with a coherent Solarized-based design system (light and dark modes), and optimise the transcript panel for comfortable long-form reading.
+
+**Requirements:** *(UI-01 through UI-N)*
+
+**Plans:**
+5/5 plans complete
+
+**Success Criteria:**
+1. App ships Solarized Light as default; Solarized Dark toggled via a toolbar button
+2. Dark mode preference persists across sessions (localStorage)
+3. Transcript panel uses a readable measure (≤75ch), comfortable line-height, and a legible font
+4. All interactive elements use the Solarized palette
+5. Session list view and onboarding view are also reskinned
+6. No regression in existing functionality
+
+---
+
+## Phase 10: Packaging & Distribution
+
+**Goal:** Produce a single self-contained installer per platform (macOS `.dmg`, Windows NSIS `.exe`, Linux `.AppImage`) that bundles the Electron app and the frozen Python sidecar. No Python or Node runtime required on the end-user machine.
+
+**Requirements:** *(build infrastructure — no new user-facing requirements)*
+
+**Plans:**
+0/4 plans complete
+
+**Success Criteria:**
+1. `npm run build:all` completes without error on macOS ARM64
+2. The produced `.dmg` installs and launches the app successfully
+3. Sidecar starts automatically within the packaged app and `GET /health` returns 200
+4. Model download works from within the packaged app (userData path correct)
+5. No user needs Python, Node, or any runtime pre-installed
+6. GitHub Actions workflow builds and uploads the `.dmg` artifact on push to `main`
+
+---
+
+## Phase 11: Replace Whisper with NVIDIA Canary Qwen 2.5B
+
+**Goal:** [To be planned]
+**Requirements:** TBD
+**Depends on:** Phase 10
+**Plans:** 0 plans
+
+- [ ] TBD (run `/gsd-plan-phase 11` to break down)
+
+---
+
+## Phase 12: Orange Record Button
+
+**Goal:** [To be planned]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+- [ ] TBD (run `/gsd-plan-phase 12` to break down)
+
+---
+
+## Phase 13: Pause & Resume Recordings
+
+**Goal:** [To be planned]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+- [ ] TBD (run `/gsd-plan-phase 13` to break down)
 
 ---
 
@@ -157,104 +285,15 @@
 
 **Coverage: 30/30 ✓**
 
----
-*Roadmap created: 2011-04-12*
+### Phase 14: "I want to be able to pause and continue voice recordings so there is not too much silence on my takes."
 
-## Phase 6: Bug Fixing
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
 
-**Goal:** Audit the app end-to-end for runtime bugs across all phases and fix them so the app is functionally usable: device selection, recording, transcription, word navigation, annotation CRUD, session persistence, and export.
-
-**Requirements:** *(gap-closure — no new requirements, validates existing phases 1–5)*
-
-**Plans:**
-1/1 plans complete
-
-**Success Criteria:**
-1. App launches without errors
-2. Recording and transcription work end-to-end
-3. Word click-to-seek and selection work in the transcript
-4. Annotations can be created, edited, and removed
-5. Session saves and restores correctly across relaunches
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
 
 ---
-
-## Phase 7: Image Export Formatting
-
-**Goal:** When exporting to Markdown, image annotations must not be inline — they must be rendered as block elements: the preceding transcript text ends on its own line, the image appears on its own line (`![...](assets/...)`), and the following text begins on a new line.
-
-**Requirements:** *(refinement of EXPORT-02)*
-
-**Plans:**
-0/1 plans complete
-
-**Success Criteria:**
-1. Exported `.md` renders images as block-level elements — each image is preceded and followed by a blank line
-2. No transcript text appears on the same line as an image tag
-3. Existing text and hyperlink annotation formatting is unaffected
-
----
-
-| 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete | 2011-04-13 |
-| 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel (measure, font, rhythm) | Complete    | 2011-04-13 |
-| 10 | Packaging & Distribution | Single installer (macOS dmg / Windows exe / Linux AppImage) shipping Electron + frozen Python sidecar; model downloaded at runtime | Pending | 2011-04-13 |
-
----
-
-## Phase 8: Session Management
-
-**Goal:** Allow users to maintain multiple transcript sessions simultaneously. A user can close the current session (saving all state), browse a list of past sessions, and open any of them to continue work — or start a fresh session from scratch.
-
-**Requirements:** *(extends SESSION-01–03 from Phase 4)*
-
-**Plans:**
-3/3 plans complete
-
-**Success Criteria:**
-1. User can see a list of all saved sessions (title, date, duration snippet)
-2. User can open any past session and resume annotation where they left off
-3. User can close the current session and return to the session list
-4. User can create a brand-new session from the session list
-5. Switching sessions preserves all annotation and transcript data for the closed session
-6. App opens to the session list (not the last session) on relaunch
-
----
-
-## Backlog
-
-*(empty)*
-
-## Phase 9: UI Overhaul
-
-**Goal:** Replace ad-hoc utility styles with a coherent Solarized-based design system (light and dark modes), and optimise the transcript panel for comfortable long-form reading (measure, leading, font).
-
-**Requirements:** *(UI-01 through UI-N — to be defined in planning)*
-
-**Plans:**
-5/5 plans complete
-
-**Success Criteria:**
-1. App ships Solarized Light as default; Solarized Dark toggled via a button in the toolbar
-2. Dark mode preference persists across sessions (localStorage)
-3. Transcript panel uses a readable measure (≤75ch), comfortable line-height, and a legible font
-4. All interactive elements (buttons, inputs, dialogs) use the Solarized palette
-5. Session list view and onboarding view are also reskinned
-6. No regression in existing functionality — typecheck and manual smoke test pass
-
-
-## Phase 10: Packaging & Distribution
-
-**Goal:** Produce a single self-contained installer per platform (macOS `.dmg`, Windows NSIS `.exe`, Linux `.AppImage`) that bundles the Electron app and the frozen Python sidecar. No Python or Node runtime required on the end-user machine. The Whisper model is excluded from the bundle and downloaded on first launch as today.
-
-**Requirements:** *(build infrastructure — no new user-facing requirements)*
-
-**Plans:**
-0/4 plans complete
-
-**Success Criteria:**
-1. `npm run build:all` completes without error on macOS ARM64
-2. The produced `.dmg` installs and launches the app successfully
-3. Sidecar starts automatically within the packaged app and `GET /health` returns 200
-4. Model download works from within the packaged app (userData path correct)
-5. No user needs Python, Node, or any runtime pre-installed
-6. GitHub Actions workflow builds and uploads the `.dmg` artifact on push to `main`
-
+*Roadmap last cleaned: 2026-04-14*
