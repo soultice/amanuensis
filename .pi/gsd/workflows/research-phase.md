@@ -46,6 +46,7 @@
     <args>
       <arg string="roadmap" />
       <arg string="get-phase" />
+      <arg name="phase" wrap='"' />
     </args>
     <outs>
       <out type="string" name="roadmap-phase" />
