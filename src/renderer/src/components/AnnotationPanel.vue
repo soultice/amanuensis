@@ -4,6 +4,14 @@
     <div class="annotation-panel__header">
       <span class="annotation-panel__title">Annotations</span>
       <button
+        class="export-btn copy-btn"
+        :disabled="!transcriptStore.hasTranscript"
+        :title="transcriptStore.hasTranscript ? 'Copy transcript text to clipboard' : 'Transcribe first to enable copy'"
+        @click="copyTranscriptText"
+      >
+        {{ copied ? '✓ Copied' : '⎘ Copy' }}
+      </button>
+      <button
         class="export-btn"
         :disabled="!transcriptStore.hasTranscript"
         :title="transcriptStore.hasTranscript ? 'Export transcript as Markdown' : 'Transcribe first to enable export'"
@@ -90,6 +98,15 @@ const playbackStore = usePlaybackStore()
 const sessionStore = useSessionStore()
 const editingAnnotation = ref<Annotation | null>(null)
 const dragActiveId = ref<string | null>(null)
+const copied = ref(false)
+
+async function copyTranscriptText(): Promise<void> {
+  if (!transcriptStore.hasTranscript) return
+  const text = transcriptStore.words.map(w => w.word).join('').trim()
+  await navigator.clipboard.writeText(text)
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 1500)
+}
 
 // Click an annotation card → set waveform region + seek to its start time
 function focusAnnotation(annotation: Annotation): void {
@@ -224,6 +241,15 @@ async function exportMarkdown(): Promise<void> {
 }
 .export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .export-btn:hover:not(:disabled) { background: var(--accent-2); }
+
+.copy-btn {
+  background: var(--bg-raised);
+  color: var(--text-em);
+  border: 1px solid var(--border);
+}
+.copy-btn:hover:not(:disabled) {
+  background: var(--bg-hl);
+}
 .annotation-panel__empty {
   color: var(--text-de);
   font-size: 0.8rem;
