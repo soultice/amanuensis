@@ -48,11 +48,11 @@
   <shell command="pi-gsd-tools">
     <args>
       <arg string="phase" />
-      <arg string="add-batch" />
+      <arg string="add" />
       <arg name="description" wrap='"' />
     </args>
     <outs>
-      <out type="string" name="batch-result" />
+      <out type="string" name="add-result" />
     </outs>
   </shell>
 </gsd-execute>
@@ -62,8 +62,8 @@
 **Init:**
 <gsd-paste name="init" />
 
-**Phases added:**
-<gsd-paste name="batch-result" />
+**Phase added:**
+<gsd-paste name="add-result" />
 
 <process>
 
@@ -81,12 +81,12 @@ Exit.
 </step>
 
 <step name="check_result">
-The `batch-result` JSON above was already executed by WXP before this message
+The `add-result` JSON above was already executed by WXP before this message
 reached you. Parse it:
 
 - If it contains an error field → report the error and exit.
-- Otherwise extract `phases[]` — each has `phase_number`, `padded`, `name`,
-  `slug`, `directory`.
+- Otherwise extract `phase_number`, `name`, `slug`, `directory` from the
+  single-phase result object.
 
 Do NOT run `pi-gsd-tools phase add` again, do NOT inspect `.planning/phases/`
 or ROADMAP.md — everything is already done.
@@ -96,12 +96,10 @@ or ROADMAP.md — everything is already done.
 Present a completion summary:
 
 ```
-Added <count> phase(s):
+Added 1 phase:
 
-<for each phase in phases[]>
 • Phase <phase_number>: <name>
   Directory: <directory>
-</for>
 
 Roadmap updated: .planning/ROADMAP.md
 State updated:   .planning/STATE.md
@@ -110,9 +108,9 @@ State updated:   .planning/STATE.md
 
 ## ▶ Next Up
 
-**Phase <last phase_number>: <last name>**
+**Phase <phase_number>: <name>**
 
-`/gsd-plan-phase <last phase_number>`
+`/gsd-plan-phase <phase_number>`
 
 <sub>`/clear` first → fresh context window</sub>
 
@@ -120,16 +118,16 @@ State updated:   .planning/STATE.md
 
 **Also available:**
 - `/gsd-add-phase <description>` — add another phase
-- `/gsd-plan-phase <N>` — plan any of the new phases
+- `/gsd-plan-phase <N>` — plan the new phase
 ```
 </step>
 
 </process>
 
 <success_criteria>
-- [ ] `pi-gsd-tools phase add-batch` executed by WXP (not by the agent)
-- [ ] Phase directories created under `.planning/phases/`
-- [ ] ROADMAP.md updated with all new phase entries
-- [ ] STATE.md Roadmap Evolution updated (handled inside add-batch)
+- [ ] `pi-gsd-tools phase add` executed by WXP (not by the agent)
+- [ ] Phase directory created under `.planning/phases/`
+- [ ] ROADMAP.md updated with the new phase entry
+- [ ] STATE.md updated (handled inside phase add)
 - [ ] Agent presented the pre-injected result — no filesystem exploration
 </success_criteria>
