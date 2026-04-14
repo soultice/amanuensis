@@ -195,6 +195,7 @@
 | 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete | 2026-04-13 |
 | 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel (measure, font, rhythm) | Complete    | 2026-04-13 |
 | 10 | Packaging & Distribution | Single installer (macOS dmg / Windows exe / Linux AppImage) shipping Electron + frozen Python sidecar; model downloaded at runtime | Pending | 2026-04-13 |
+| 11 | Fish Audio S2 Pro Transcription | Replace local faster-whisper sidecar with Fish Audio cloud ASR; word-timestamp adapter; API key onboarding | Pending | 2026-04-13 |
 
 ---
 
@@ -258,3 +259,25 @@
 4. Model download works from within the packaged app (userData path correct)
 5. No user needs Python, Node, or any runtime pre-installed
 6. GitHub Actions workflow builds and uploads the `.dmg` artifact on push to `main`
+
+
+---
+
+## Phase 11: Fish Audio S2 Pro Transcription Backend
+
+**Goal:** Replace the local faster-whisper transcription engine with Fish Audio's cloud ASR API (`POST /v1/asr`). The user supplies their own Fish Audio API key; the app sends recorded audio to Fish Audio, receives segment-level timestamps, and adapts them to the word-level schema the rest of the app requires via uniform distribution within each segment.
+
+**Requirements:** *(replaces TRANS-01–04; adds API-KEY-01–03)*
+
+**Plans:**
+0/0 plans complete
+
+**Success Criteria:**
+1. User can enter a Fish Audio API key in the onboarding screen; it is stored securely via `safeStorage`
+2. "Test connection" button in onboarding validates the key against Fish Audio's API
+3. Recording → Transcribe produces a word-level transcript powered by Fish Audio (no local Whisper model required)
+4. Word-click navigation and annotation work correctly with the adapted word timestamps
+5. If the Fish Audio call fails (network error, bad key, quota exceeded), a clear error message is shown with a Retry option
+6. The Python sidecar, model download, and model-status infrastructure are fully removed
+7. App starts without a sidecar process; `AppStatusBar` no longer shows sidecar status
+
