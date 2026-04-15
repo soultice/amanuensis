@@ -116,6 +116,19 @@ const { waveSurfer, isReady } = useWaveSurfer({
 watch(waveSurfer, (ws) => {
   if (!ws) return
 
+  // Inject CSS into WaveSurfer's shadow root to hide the built-in progress
+  // overlay and cursor line. Vue scoped ::part() selectors don't reach the
+  // shadow DOM because the shadow host div is created by WaveSurfer's JS (not
+  // the component template), so Vue never stamps its data-v-xxxx attribute on
+  // it — the scoped selector silently fails. Injecting a <style> directly into
+  // the shadow root bypasses Vue scoping entirely.
+  const shadowHost = containerRef.value?.firstElementChild
+  if (shadowHost?.shadowRoot) {
+    const style = document.createElement('style')
+    style.textContent = '.progress,.cursor{display:none!important}'
+    shadowHost.shadowRoot.prepend(style)
+  }
+
   playbackStore.registerWaveSurfer(ws)
 
   ws.on('ready', (dur: number) => {
@@ -244,12 +257,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
 }
-/* Hide WaveSurfer's built-in progress overlay and cursor line.
-   ::part() selectors cross the shadow DOM boundary — no JS hacks needed. */
-.waveform-panel__wave::part(progress) {
-  display: none;
-}
-.waveform-panel__wave::part(cursor) {
-  display: none;
-}
+/* Note: .progress and .cursor inside WaveSurfer's shadow root are hidden via
+   JS style injection in watch(waveSurfer) — ::part() in scoped CSS doesn't
+   reach the shadow host because it lacks the Vue data-v attribute. */
 </style>
