@@ -1,9 +1,10 @@
 <template>
-  <div ref="panelRef" class="waveform-panel">
+  <div ref="panelRef" class="waveform-panel" @click="handlePanelClick">
     <!-- Placeholder shown before any audio is available -->
     <p v-if="!recordingStore.audioBlobUrl" class="waveform-panel__empty">
-      Waveform appears after recording
+      Waveform appears<br>after recording
     </p>
+
     <!--
       Container is always in the DOM so useWaveSurfer's onMounted can create
       the WaveSurfer instance with a valid element. Hiding it via v-if caused
@@ -11,6 +12,18 @@
       and the waveform was permanently blank after recording.
     -->
     <div ref="containerRef" class="waveform-panel__wave" />
+
+    <!--
+      Playback cursor: a horizontal line at the current playback position.
+      WaveSurfer's built-in progress overlay fills left→right, which is wrong
+      for a vertical (top→bottom) waveform. We use progressColor:'transparent'
+      and draw the cursor ourselves as a CSS-positioned div instead.
+    -->
+    <div
+      v-if="isReady && playbackStore.duration > 0"
+      class="waveform-panel__cursor"
+      :style="{ top: (playbackStore.currentTime / playbackStore.duration * 100) + '%' }"
+    />
   </div>
 </template>
 
@@ -32,32 +45,64 @@ const containerRef = ref<HTMLElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
-// Target WaveSurfer height = the waveform panel's full height so the
-// visualisation fills the side column. Updated on each ResizeObserver callback.
-
 // Regions plugin — created before WaveSurfer init so it can be passed as plugin
 const regionsPlugin = RegionsPlugin.create()
 
-// Theme-adaptive wave colours. waveColor #d1d5db had 1.20:1 contrast on
-// Solarized-light (#eee8d5) — invisible. Use Solarized palette tokens instead.
+// Theme-adaptive wave colours.
 const waveColors = computed(() =>
   themeStore.isDark
-    ? { waveColor: '#93a1a1', progressColor: '#268bd2', cursorColor: '#93a1a1' }
-    : { waveColor: '#657b83', progressColor: '#1a56db', cursorColor: '#374151' }
+    ? { waveColor: '#93a1a1', progressColor: 'transparent', cursorColor: 'transparent' }
+    : { waveColor: '#657b83', progressColor: 'transparent', cursorColor: 'transparent' }
 )
+
+/**
+ * Vertical waveform renderer for WaveSurfer's renderFunction hook.
+ *
+ * WaveSurfer calls this after audio is decoded, passing peaks[] and the
+ * canvas 2D context. The canvas is already sized to containerWidth × WaveSurferHeight.
+ * We draw the waveform with time flowing TOP → BOTTOM:
+ *   - Y axis = time (0 at top, duration at bottom)
+ *   - X axis = amplitude (bars centred horizontally)
+ *
+ * WaveSurfer sets ctx.fillStyle = waveColor before calling us, so we inherit
+ * the correct theme colour automatically.
+ */
+function renderVertical(
+  peaks: Array<Float32Array | number[]>,
+  ctx: CanvasRenderingContext2D,
+): void {
+  const { width, height } = ctx.canvas
+  const channelData = peaks[0]
+  if (!channelData || channelData.length === 0) return
+
+  const totalSamples = channelData.length
+  // Thickness of each bar: spread samples evenly over canvas height.
+  // At minimum 1px so nothing disappears due to rounding.
+  const barThickness = Math.max(1, Math.ceil(height / totalSamples))
+
+  for (let i = 0; i < totalSamples; i++) {
+    const amplitude = Math.abs(Number(channelData[i]))
+    if (amplitude < 0.001) continue // skip near-silence
+
+    const y = Math.round((i / totalSamples) * height)
+    const barW = Math.round(amplitude * width)
+    const x = Math.round((width - barW) / 2) // centred horizontally
+    ctx.fillRect(x, y, barW, barThickness)
+  }
+}
 
 const { waveSurfer, isReady } = useWaveSurfer({
   containerRef,
   options: {
-    height: 160,
+    height: 160, // overridden by ResizeObserver once panel dimensions are known
     ...waveColors.value,
-    barWidth: 2,
-    barGap: 1,
-    barRadius: 2,
-    interact: true,
+    barWidth: 0,      // ignored — renderFunction overrides bar drawing
+    barGap: 0,
+    barRadius: 0,
+    interact: false,  // Y-axis seek handled by handlePanelClick below
     normalize: true,
     plugins: [regionsPlugin],
-    // url loaded dynamically when audioBlobUrl changes (see watch below)
+    renderFunction: renderVertical,
   },
 })
 
@@ -82,7 +127,7 @@ watch(waveSurfer, (ws) => {
     ws.load(recordingStore.audioBlobUrl)
   }
 
-  // ResizeObserver keeps WaveSurfer height = panel height so the waveform
+  // ResizeObserver: keep WaveSurfer height = panel height so the waveform
   // fills the full side column. Width is handled by CSS (width: 100%).
   if (panelRef.value) {
     resizeObserver?.disconnect()
@@ -106,7 +151,7 @@ watch(
   }
 )
 
-// Sync WaveSurfer region with the selected word range (D-08, D-03/D-04)
+// Sync WaveSurfer region with the selected word range
 watch(
   () => [playbackStore.selectionMin, playbackStore.selectionMax] as [number | null, number | null],
   ([min, max]) => {
@@ -139,6 +184,20 @@ watch(waveColors, (colors) => {
   }
 })
 
+/**
+ * Y-axis click-to-seek: vertical position in the panel maps to audio time.
+ * WaveSurfer's built-in X-axis seek is disabled (interact: false).
+ */
+function handlePanelClick(e: MouseEvent): void {
+  if (!waveSurfer.value || !panelRef.value) return
+  const rect = panelRef.value.getBoundingClientRect()
+  const relativeTime = (e.clientY - rect.top) / rect.height
+  const duration = waveSurfer.value.getDuration()
+  if (duration > 0) {
+    waveSurfer.value.setTime(Math.max(0, Math.min(1, relativeTime)) * duration)
+  }
+}
+
 onUnmounted(() => {
   resizeObserver?.disconnect()
   waveSurfer.value?.destroy()
@@ -157,15 +216,29 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   color: var(--text-de);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   letter-spacing: 0.05em;
+  line-height: 1.6;
   pointer-events: none;
 }
 .waveform-panel__wave {
-  /* Fill the full panel — WaveSurfer height is set to panel height via
-     ResizeObserver so the waveform fills the entire side column. */
+  /* Fills the panel — WaveSurfer height set to panel height via ResizeObserver.
+     renderFunction draws bars vertically (time: top → bottom). */
   width: 100%;
   height: 100%;
+}
+.waveform-panel__cursor {
+  /* Horizontal line marking current playback position (replaces WaveSurfer's
+     left→right progress overlay, which is wrong for a vertical waveform). */
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  /* Smooth cursor movement during playback */
+  transition: top 0.1s linear;
 }
 </style>
