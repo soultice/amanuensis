@@ -163,8 +163,11 @@ onUnmounted(() => {
 .waveform-panel {
   height: 100%;
   position: relative;
-  overflow: hidden;
-  /* padding: 0 16px removed — confounds rotation geometry */
+  /* overflow: hidden removed — it clips the wave div at top:100% before
+     CSS rotation brings it back into bounds. Use clip-path instead:
+     clip-path clips the post-transform visual, not the pre-transform
+     layout box, so the rotated canvas is visible. */
+  clip-path: inset(0);
 }
 .waveform-panel__empty {
   position: absolute;

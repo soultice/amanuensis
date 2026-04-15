@@ -256,6 +256,15 @@ function formatDuration(seconds: number): string {
 .transcript-panel__error {
   max-width: 68ch;
   margin: 0 auto;
+  /* flex: 1 + overflow-y: auto makes the content area the scroll container
+     inside the flex column, keeping the session title pinned at top.
+     min-height: 0 allows shrinking below natural content height.
+     width: 100% ensures the item fills available cross-axis before
+     max-width caps it (needed for margin: auto centering to work). */
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  width: 100%;
 }
 
 /* ---- Empty state ---- */
