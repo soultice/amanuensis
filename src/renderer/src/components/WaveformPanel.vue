@@ -89,10 +89,15 @@ watch(waveSurfer, (ws) => {
     resizeObserver = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
       // After 90° rotation: wave div CSS width = panelHeight (so it fills height visually)
+      // wave div CSS height = panelWidth (WaveSurfer shadow-DOM canvases are absolutely
+      // positioned inside the shadow root — they don't contribute to the host element's
+      // layout height, leaving it 0px. After rotate(90deg), visual width = element height,
+      // so a 0px height produces a 0px-wide (invisible) waveform. Explicit style.height fixes this.
       if (containerRef.value) {
         containerRef.value.style.width = `${Math.floor(height)}px`
+        containerRef.value.style.height = `${Math.floor(width)}px`
       }
-      // WaveSurfer height option = panelWidth (fills the across-waveform visual width)
+      // Keep WaveSurfer's internal canvas in sync with the container height
       ws.setOptions({ height: Math.floor(width) })
     })
     resizeObserver.observe(panelRef.value)
