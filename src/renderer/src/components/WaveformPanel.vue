@@ -125,7 +125,7 @@ watch(waveSurfer, (ws) => {
   const shadowHost = containerRef.value?.firstElementChild
   if (shadowHost?.shadowRoot) {
     const style = document.createElement('style')
-    style.textContent = '.progress,.cursor{display:none!important}'
+    style.textContent = '.progress,.cursor{display:none!important}.canvases{clip-path:none!important}'
     shadowHost.shadowRoot.prepend(style)
   }
 
