@@ -271,4 +271,16 @@ onUnmounted(() => {
 /* Note: .progress and .cursor inside WaveSurfer's shadow root are hidden via
    JS style injection in watch(waveSurfer) — ::part() in scoped CSS doesn't
    reach the shadow host because it lacks the Vue data-v attribute. */
+.waveform-panel__cursor {
+  /* Horizontal position-indicator line: moves top→bottom as audio plays.
+     The panel is transcriptScrollHeight tall so top:N% = N% through the audio.
+     z-index above the WaveSurfer canvas, below any tooltip/overlay. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 10;
+}
 </style>
