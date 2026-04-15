@@ -163,9 +163,12 @@ watch(waveSurfer, (ws) => {
 })
 
 // When transcript content grows (e.g. after transcription), update WaveSurfer
+// height AND the container's explicit CSS height so the panel grows to match
+// the full transcript content height (enabling scroll sync).
 watch(() => props.transcriptScrollHeight, (sh) => {
-  if (waveSurfer.value && sh > 0) {
-    waveSurfer.value.setOptions({ height: sh })
+  if (sh > 0) {
+    if (containerRef.value) containerRef.value.style.height = `${sh}px`
+    if (waveSurfer.value) waveSurfer.value.setOptions({ height: sh })
   }
 })
 
@@ -213,16 +216,21 @@ watch(waveColors, (colors) => {
 })
 
 /**
- * Y-axis click-to-seek: vertical position in the panel maps to audio time.
- * WaveSurfer's built-in X-axis seek is disabled (interact: false).
+ * Y-axis click-to-seek. Uses the container's full scrollable height (not the
+ * panel's clipped viewport) so seek position is correct regardless of scroll.
  */
 function handlePanelClick(e: MouseEvent): void {
-  if (!waveSurfer.value || !panelRef.value) return
-  const rect = panelRef.value.getBoundingClientRect()
-  const relativeTime = (e.clientY - rect.top) / rect.height
+  if (!waveSurfer.value || !containerRef.value) return
+  // panelRef.getBoundingClientRect() gives the VIEWPORT rect (clipped).
+  // We need the position relative to the full canvas height.
+  const panelRect = panelRef.value!.getBoundingClientRect()
+  const scrollTop = panelRef.value!.parentElement?.scrollTop ?? 0
+  const totalHeight = containerRef.value.offsetHeight // full canvas height
+  const clickY = (e.clientY - panelRect.top) + scrollTop
+  const relativeTime = Math.max(0, Math.min(1, clickY / totalHeight))
   const duration = waveSurfer.value.getDuration()
   if (duration > 0) {
-    waveSurfer.value.setTime(Math.max(0, Math.min(1, relativeTime)) * duration)
+    waveSurfer.value.setTime(relativeTime * duration)
   }
 }
 
@@ -234,7 +242,10 @@ onUnmounted(() => {
 
 <style scoped>
 .waveform-panel {
-  height: 100%;
+  /* No height:100% — the panel grows to match the WaveSurfer canvas height
+     (= transcriptScrollHeight, set on .waveform-panel__wave via inline style).
+     .app-shell__waveform (overflow-y:scroll, viewport-height) clips and scrolls
+     the tall panel so temporal positions match the transcript scroll position. */
   position: relative;
   overflow: hidden;
 }
@@ -252,10 +263,10 @@ onUnmounted(() => {
   pointer-events: none;
 }
 .waveform-panel__wave {
-  /* Fills the panel — WaveSurfer height set to panel height via ResizeObserver.
-     renderFunction draws bars vertically (time: top → bottom). */
+  /* Width fills the column. Height set dynamically via inline style to
+     transcriptScrollHeight so the waveform and transcript span the same
+     total vertical distance (temporal alignment via scroll sync). */
   width: 100%;
-  height: 100%;
 }
 /* Note: .progress and .cursor inside WaveSurfer's shadow root are hidden via
    JS style injection in watch(waveSurfer) — ::part() in scoped CSS doesn't
