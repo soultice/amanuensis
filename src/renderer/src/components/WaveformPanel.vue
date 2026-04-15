@@ -244,16 +244,12 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
 }
-.waveform-panel__cursor {
-  /* Horizontal line marking current playback position (replaces WaveSurfer's
-     left→right progress overlay, which is wrong for a vertical waveform). */
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--accent);
-  pointer-events: none;
-  /* Smooth cursor movement during playback */
-  transition: top 0.1s linear;
+/* Hide WaveSurfer's built-in progress overlay and cursor line.
+   ::part() selectors cross the shadow DOM boundary — no JS hacks needed. */
+.waveform-panel__wave::part(progress) {
+  display: none;
+}
+.waveform-panel__wave::part(cursor) {
+  display: none;
 }
 </style>
