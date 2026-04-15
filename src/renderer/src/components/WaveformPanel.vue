@@ -1,5 +1,5 @@
 <template>
-  <div ref="panelRef" class="waveform-panel" @click="handlePanelClick">
+  <div ref="panelRef" class="waveform-panel">
     <!-- Placeholder shown before any audio is available -->
     <p v-if="!recordingStore.audioBlobUrl" class="waveform-panel__empty">
       Waveform appears after recording
@@ -32,6 +32,9 @@ const containerRef = ref<HTMLElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
+// Target WaveSurfer height = the waveform panel's full height so the
+// visualisation fills the side column. Updated on each ResizeObserver callback.
+
 // Regions plugin — created before WaveSurfer init so it can be passed as plugin
 const regionsPlugin = RegionsPlugin.create()
 
@@ -62,9 +65,6 @@ const { waveSurfer, isReady } = useWaveSurfer({
 watch(waveSurfer, (ws) => {
   if (!ws) return
 
-  // Disable built-in click-to-seek (X-axis) — replaced by custom Y-axis handler
-  ws.setOptions({ interact: false })
-
   playbackStore.registerWaveSurfer(ws)
 
   ws.on('ready', (dur: number) => {
@@ -82,23 +82,15 @@ watch(waveSurfer, (ws) => {
     ws.load(recordingStore.audioBlobUrl)
   }
 
-  // Set up ResizeObserver to keep wave div width and WaveSurfer height in sync
-  // with the panel dimensions. Must run after ws is available.
+  // ResizeObserver keeps WaveSurfer height = panel height so the waveform
+  // fills the full side column. Width is handled by CSS (width: 100%).
   if (panelRef.value) {
     resizeObserver?.disconnect()
     resizeObserver = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect
-      // After 90° rotation: wave div CSS width = panelHeight (so it fills height visually)
-      // wave div CSS height = panelWidth (WaveSurfer shadow-DOM canvases are absolutely
-      // positioned inside the shadow root — they don't contribute to the host element's
-      // layout height, leaving it 0px. After rotate(90deg), visual width = element height,
-      // so a 0px height produces a 0px-wide (invisible) waveform. Explicit style.height fixes this.
-      if (containerRef.value) {
-        containerRef.value.style.width = `${Math.floor(height)}px`
-        containerRef.value.style.height = `${Math.floor(width)}px`
+      const { height } = entry.contentRect
+      if (height > 0) {
+        ws.setOptions({ height: Math.floor(height) })
       }
-      // Keep WaveSurfer's internal canvas in sync with the container height
-      ws.setOptions({ height: Math.floor(width) })
     })
     resizeObserver.observe(panelRef.value)
   }
@@ -147,17 +139,6 @@ watch(waveColors, (colors) => {
   }
 })
 
-function handlePanelClick(e: MouseEvent): void {
-  if (!waveSurfer.value || !panelRef.value) return
-  const rect = panelRef.value.getBoundingClientRect()
-  // After 90° rotation, vertical position maps to audio time position
-  const relativeTime = (e.clientY - rect.top) / rect.height
-  const duration = waveSurfer.value.getDuration()
-  if (duration > 0) {
-    waveSurfer.value.setTime(relativeTime * duration)
-  }
-}
-
 onUnmounted(() => {
   resizeObserver?.disconnect()
   waveSurfer.value?.destroy()
@@ -168,11 +149,7 @@ onUnmounted(() => {
 .waveform-panel {
   height: 100%;
   position: relative;
-  /* overflow: hidden removed — it clips the wave div at top:100% before
-     CSS rotation brings it back into bounds. Use clip-path instead:
-     clip-path clips the post-transform visual, not the pre-transform
-     layout box, so the rotated canvas is visible. */
-  clip-path: inset(0);
+  overflow: hidden;
 }
 .waveform-panel__empty {
   position: absolute;
@@ -184,16 +161,11 @@ onUnmounted(() => {
   font-size: 0.8rem;
   letter-spacing: 0.05em;
   pointer-events: none;
-  writing-mode: vertical-rl;   /* rotate placeholder text to read top-to-bottom */
-  transform: rotate(180deg);   /* flip so text reads top→bottom, not bottom→top */
 }
 .waveform-panel__wave {
-  position: absolute;
-  top: 100%;            /* transform-origin: 0 0 rotates around bottom-left corner of panel */
-  left: 0;
-  /* width: set dynamically by ResizeObserver to panelHeight px */
-  /* height: controlled by WaveSurfer height option = panelWidth px */
-  transform: rotate(90deg);
-  transform-origin: 0 0;
+  /* Fill the full panel — WaveSurfer height is set to panel height via
+     ResizeObserver so the waveform fills the entire side column. */
+  width: 100%;
+  height: 100%;
 }
 </style>
