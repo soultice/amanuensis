@@ -152,6 +152,9 @@ app.whenReady().then(async () => {
     }
   } catch { /* no legacy session — normal first launch */ }
 
+  // Recover any session directories that were orphaned due to index corruption
+  await recoverOrphanedSessions()
+
   createWindow()
 
   // Serve local asset files via asset:// custom protocol — avoids cross-origin
@@ -254,7 +257,51 @@ async function writeSessionIndex(index: SessionMeta[]): Promise<void> {
   const sessionsDir = join(app.getPath('userData'), 'sessions')
   await fsPromises.mkdir(sessionsDir, { recursive: true })
   const indexPath = join(sessionsDir, 'index.json')
-  await fsPromises.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8')
+  const tmpPath = join(sessionsDir, 'index.json.tmp')
+  await fsPromises.writeFile(tmpPath, JSON.stringify(index, null, 2), 'utf-8')
+  await fsPromises.rename(tmpPath, indexPath)
+}
+
+/** Scan sessions directory and add any session dirs missing from the index (recovery from index corruption). */
+async function recoverOrphanedSessions(): Promise<void> {
+  const sessionsDir = join(app.getPath('userData'), 'sessions')
+  const existingIndex = await readSessionIndex()
+  const existingIds = new Set(existingIndex.map((s) => s.id))
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+  try {
+    const entries = await fsPromises.readdir(sessionsDir, { withFileTypes: true })
+    const orphaned: SessionMeta[] = []
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !uuidPattern.test(entry.name)) continue
+      if (existingIds.has(entry.name)) continue // already tracked
+
+      const sessionPath = join(sessionsDir, entry.name, 'session.json')
+      try {
+        const raw = await fsPromises.readFile(sessionPath, 'utf-8')
+        const data = JSON.parse(raw)
+        const wordCount: number = data.transcript?.words?.length ?? 0
+        const savedAt: string = data.savedAt ?? new Date().toISOString()
+        // Derive a display name from the savedAt timestamp
+        const d = new Date(savedAt)
+        const pad = (n: number): string => String(n).padStart(2, '0')
+        const name = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+        orphaned.push({ id: entry.name, name, createdAt: savedAt, updatedAt: savedAt, wordCount })
+      } catch {
+        // Skip unreadable or empty session dirs
+      }
+    }
+
+    if (orphaned.length > 0) {
+      // Sort orphans newest-first, then prepend to existing index
+      orphaned.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      console.log(`[session] Recovered ${orphaned.length} orphaned session(s) from disk`)
+      await writeSessionIndex([...existingIndex, ...orphaned])
+    }
+  } catch (err) {
+    console.error('[session] Recovery scan failed:', err)
+  }
 }
 
 // ---- Markdown export (Phase 5) ----

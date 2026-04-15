@@ -185,13 +185,21 @@ export const useSessionStore = defineStore('session', {
      * session — all without transitioning through SessionListView.
      */
     async newSession(): Promise<void> {
-      await this.save()
-      this._resetStores()
-      this.audioFileMissing = false
-      const id = await this.createSession()
-      // Set currentSessionId directly — no data to restore for an empty session
-      this.currentSessionId = id
-      this.sessionName = 'Untitled session'
+      // Stop auto-save to prevent a race: if the timer fires between _resetStores()
+      // and createSession(), it would write empty data to the old session and could
+      // overwrite the newly-created index entry. We restart after creation.
+      this.stopAutoSave()
+      try {
+        await this.save()
+        this._resetStores()
+        this.audioFileMissing = false
+        const id = await this.createSession()
+        // Set currentSessionId directly — no data to restore for an empty session
+        this.currentSessionId = id
+        this.sessionName = 'Untitled session'
+      } finally {
+        this.startAutoSave()
+      }
     },
 
     /** Close the active session: save, reset all stores, clear currentSessionId */
