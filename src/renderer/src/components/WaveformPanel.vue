@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onUnmounted } from 'vue'
+import { ref, watch, computed, onUnmounted, withDefaults, defineProps } from 'vue'
 import { useWaveSurfer } from '@meersagor/wavesurfer-vue'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import { useRecordingStore } from '../stores/recording'
@@ -44,6 +44,12 @@ const themeStore = useThemeStore()
 const containerRef = ref<HTMLElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
+
+// Height prop: AppShellView passes the transcript's natural scrollHeight so
+// the waveform fills the same vertical space as the text (temporal alignment).
+const props = withDefaults(defineProps<{ transcriptScrollHeight?: number }>(), {
+  transcriptScrollHeight: 0,
+})
 
 // Regions plugin — created before WaveSurfer init so it can be passed as plugin
 const regionsPlugin = RegionsPlugin.create()
@@ -127,17 +133,26 @@ watch(waveSurfer, (ws) => {
     ws.load(recordingStore.audioBlobUrl)
   }
 
-  // ResizeObserver: keep WaveSurfer height = panel height so the waveform
-  // fills the full side column. Width is handled by CSS (width: 100%).
+  // ResizeObserver: keeps WaveSurfer height in sync.
+  // When transcriptScrollHeight > 0, use that (so waveform matches full text
+  // height). Otherwise fall back to the panel's own clientHeight.
   if (panelRef.value) {
     resizeObserver?.disconnect()
     resizeObserver = new ResizeObserver(([entry]) => {
       const { height } = entry.contentRect
-      if (height > 0) {
-        ws.setOptions({ height: Math.floor(height) })
-      }
+      const target = props.transcriptScrollHeight > 0
+        ? props.transcriptScrollHeight
+        : Math.floor(height)
+      if (target > 0) ws.setOptions({ height: target })
     })
     resizeObserver.observe(panelRef.value)
+  }
+})
+
+// When transcript content grows (e.g. after transcription), update WaveSurfer
+watch(() => props.transcriptScrollHeight, (sh) => {
+  if (waveSurfer.value && sh > 0) {
+    waveSurfer.value.setOptions({ height: sh })
   }
 })
 

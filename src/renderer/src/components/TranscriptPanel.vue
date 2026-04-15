@@ -1,5 +1,5 @@
 <template>
-  <div class="transcript-panel">
+  <div ref="panelEl" class="transcript-panel">
 
     <!-- Editable session title (Phase 13) -->
     <div v-if="sessionStore.currentSessionId" class="session-title">
@@ -202,6 +202,10 @@ function formatDuration(seconds: number): string {
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
 }
+
+// Expose so AppShellView can observe natural content height for waveform sync
+const panelEl = ref<HTMLElement | null>(null)
+defineExpose({ panelEl })
 </script>
 
 <style scoped>
@@ -209,17 +213,21 @@ function formatDuration(seconds: number): string {
 .transcript-panel {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  /* No height:100% — let content grow naturally so .app-shell__transcript
+     can scroll the full text. Outer overflow-y:auto on .app-shell__transcript
+     is the scroll container. */
   background: var(--bg);
   color: var(--text);
 }
 
-/* Session title (Phase 13) */
+/* Session title sticks to top while transcript content scrolls beneath it */
 .session-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg);
   padding: 8px 16px 4px;
   border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
 }
 .session-title__display {
   font-family: 'Georgia', 'Times New Roman', serif;
@@ -256,15 +264,8 @@ function formatDuration(seconds: number): string {
 .transcript-panel__error {
   max-width: 68ch;
   margin: 0 auto;
-  /* flex: 1 + overflow-y: auto makes the content area the scroll container
-     inside the flex column, keeping the session title pinned at top.
-     min-height: 0 allows shrinking below natural content height.
-     width: 100% ensures the item fills available cross-axis before
-     max-width caps it (needed for margin: auto centering to work). */
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-  width: 100%;
+  /* Scrolling is handled by .app-shell__transcript (the outer container);
+     these elements flow at their natural height. */
 }
 
 /* ---- Empty state ---- */
