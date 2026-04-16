@@ -341,5 +341,17 @@ Plans:
 Plans:
 - [x] 16-01: Add .npmrc, npm engine constraint, and README prerequisites (2026-04-16)
 
+### Phase 17: "I want to make sure the app is compatible with all three major OS (Linux, macOS, Windows) meaning i should be able to install it bundled to an app OR by checking out the repository and working on it to contribute"
+
+**Goal:** Cross-platform compatibility — app builds and runs on Linux, macOS, and Windows for both end users (bundled installer) and contributors (dev checkout)
+**Requirements**: COMPAT-01–05
+**Depends on:** Phase 16
+**Plans:** 3/3 complete ✓ (2026-04-16)
+
+Plans:
+- [x] 17-01: Extend CI to Linux and Windows (matrix build workflow)
+- [x] 17-02: Fix Windows dev mode + electron-builder cross-platform config
+- [x] 17-03: CONTRIBUTING.md with platform-specific setup guide
+
 ---
 *Roadmap last cleaned: 2026-04-16*

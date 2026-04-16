@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 17 of 24 (make sure the project is easily installable on other systems e g by adding engine instructions to package json and making sure the registry used is npmjs org)
-status: Ready to plan
-last_updated: "2026-04-16T09:19:08.152Z"
+current_phase: 17 of 18 (i want to make sure the app is compatible with all three major os linux macos windows meaning i should be able to install it bundled to an app or by checking out the repository and working on it to contribute)
+status: Phase 17 complete — ready for Phase 18
+last_updated: "2026-04-16T10:56:53.408Z"
 progress:
-  total_phases: 24
-  completed_phases: 16
-  total_plans: 34
-  completed_plans: 34
+  total_phases: 18
+  completed_phases: 17
+  total_plans: 37
+  completed_plans: 37
 ---
 
 # State: Amanuensis
 
 **Last updated:** 2026-04-12
-**Current phase:** 17 of 24 (make sure the project is easily installable on other systems e g by adding engine instructions to package json and making sure the registry used is npmjs org)
+**Current phase:** 17 of 18 (i want to make sure the app is compatible with all three major os linux macos windows meaning i should be able to install it bundled to an app or by checking out the repository and working on it to contribute)
 **Overall progress:** 0/5 phases complete
 
 ## Project Reference
@@ -58,3 +58,9 @@ See: `.planning/PROJECT.md` (updated 2026-04-12)
 | faster-whisper over openai-whisper | Pre-phase | - Pending |
 | JSON session files over SQLite | Pre-phase | - Pending |
 | Word indices as annotation position source of truth | Pre-phase | - Pending |
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 17 added: "I want to make sure the app is compatible with all three major OS (Linux, macOS, Windows) meaning i should be able to install it bundled to an app OR by checking out the repository and working on it to contribute"
