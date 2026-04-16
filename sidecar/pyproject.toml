@@ -13,7 +13,6 @@ uvicorn = {extras = ["standard"], version = ">=0.32,<0.33"}
 onnx-asr = {version = ">=0.8", extras = ["cpu", "hub"]}
 python-multipart = ">=0.0.12"
 huggingface-hub = ">=0.26"
-soundfile = ">=0.12"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8"

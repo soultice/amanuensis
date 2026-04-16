@@ -112,7 +112,7 @@ async function waitForSidecar(port: number, timeoutMs = 30000): Promise<void> {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     try {
-      const res = await fetch(`http://localhost:${port}/health`)
+      const res = await fetch(`http://127.0.0.1:${port}/health`)
       if (res.ok) return
     } catch {
       // not ready yet

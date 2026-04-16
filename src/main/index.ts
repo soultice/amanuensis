@@ -65,7 +65,7 @@ ipcMain.handle('model:get-status', async () => {
   const status = getSidecarStatus()
   if (status === 'ready' && port) {
     try {
-      const res = await fetch(`http://localhost:${port}/model/status`)
+      const res = await fetch(`http://127.0.0.1:${port}/model/status`)
       if (res.ok) return await res.json()
     } catch {
       // fallthrough to filesystem check
@@ -81,7 +81,7 @@ ipcMain.handle('model:download', async () => {
   if (!port) throw new Error('Sidecar not ready — cannot start model download')
 
   // Start download (returns immediately — sidecar runs it in a background thread)
-  const res = await fetch(`http://localhost:${port}/model/download`, { method: 'POST' })
+  const res = await fetch(`http://127.0.0.1:${port}/model/download`, { method: 'POST' })
   if (!res.ok) throw new Error(`Download request failed: ${res.status}`)
 
   // Poll sidecar for download progress and forward to renderer
@@ -90,7 +90,7 @@ ipcMain.handle('model:download', async () => {
 
   const pollInterval = setInterval(async () => {
     try {
-      const statusRes = await fetch(`http://localhost:${port}/model/status`)
+      const statusRes = await fetch(`http://127.0.0.1:${port}/model/status`)
       if (!statusRes.ok) return
       const status: { state: string; progress: number } = await statusRes.json()
 

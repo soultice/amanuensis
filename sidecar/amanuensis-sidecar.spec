@@ -66,11 +66,10 @@ a = Analysis(
         'fastapi.middleware.cors',
         # multipart
         'multipart',
-        # numpy/soundfile
+        # numpy
         'numpy',
         'numpy.core',
         'numpy.core._multiarray_umath',
-        'soundfile',
     ],
     hookspath=[],
     hooksconfig={},

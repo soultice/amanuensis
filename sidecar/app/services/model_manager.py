@@ -66,7 +66,6 @@ class ModelManager:
             snapshot_download(
                 repo_id=self.MODEL_REPO,
                 local_dir=str(self._model_dir),
-                local_dir_use_symlinks=False,
             )
 
             with self._lock:

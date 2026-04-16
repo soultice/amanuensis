@@ -6,10 +6,9 @@ from __future__ import annotations
 
 import subprocess
 import threading
+import wave
 from pathlib import Path
 from typing import Any, Optional
-
-import soundfile as sf  # type: ignore
 
 _model: Optional[Any] = None
 _model_lock = threading.Lock()
@@ -125,8 +124,10 @@ def transcribe_file(model_dir: Path, audio_path: Path, device: str = "auto") -> 
 
         words = _tokens_to_words(tokens, timestamps, segment_id=0, word_id_start=0)
 
-        info = sf.info(str(wav_path))
-        duration = round(float(info.duration), 2)
+        with wave.open(str(wav_path), "rb") as wf:
+            frames = wf.getnframes()
+            rate = wf.getframerate()
+            duration = round(float(frames) / float(rate), 2) if rate else 0.0
 
         segment_end = round(float(words[-1]["end"]), 3) if words else duration
         segments = [
