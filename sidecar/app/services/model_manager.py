@@ -13,7 +13,8 @@ ModelState = Literal["present", "downloading", "missing", "error"]
 
 class ModelManager:
     MODEL_REPO = "istupakov/parakeet-tdt-0.6b-v3-onnx"
-    MODEL_MARKERS = ("model.onnx", "tokens.txt")
+    # Required files emitted by the Parakeet ONNX export repo.
+    MODEL_MARKERS = ("encoder-model.onnx", "decoder_joint-model.onnx", "vocab.txt")
 
     def __init__(self, user_data_dir: str) -> None:
         self._model_dir = Path(user_data_dir) / "models" / "parakeet-tdt-0.6b-v3"

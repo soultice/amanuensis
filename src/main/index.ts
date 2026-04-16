@@ -72,42 +72,63 @@ ipcMain.handle('model:get-status', async () => {
     }
   }
   // Fallback: check userData directly for ONNX model presence
-  const modelOnnx = join(app.getPath('userData'), 'models', 'parakeet-tdt-0.6b-v3', 'model.onnx')
-  return { state: existsSync(modelOnnx) ? 'present' : 'missing', progress: 0, error: null }
+  const modelDir = join(app.getPath('userData'), 'models', 'parakeet-tdt-0.6b-v3')
+  const hasModel =
+    existsSync(join(modelDir, 'encoder-model.onnx')) &&
+    existsSync(join(modelDir, 'decoder_joint-model.onnx')) &&
+    existsSync(join(modelDir, 'vocab.txt'))
+  return { state: hasModel ? 'present' : 'missing', progress: 0, error: null }
 })
 
 ipcMain.handle('model:download', async () => {
   const port = getSidecarPort()
   if (!port) throw new Error('Sidecar not ready — cannot start model download')
 
-  // Start download (returns immediately — sidecar runs it in a background thread)
   const res = await fetch(`http://127.0.0.1:${port}/model/download`, { method: 'POST' })
   if (!res.ok) throw new Error(`Download request failed: ${res.status}`)
 
-  // Poll sidecar for download progress and forward to renderer
   const win = BrowserWindow.getAllWindows()[0]
-  if (!win) return
 
-  const pollInterval = setInterval(async () => {
-    try {
-      const statusRes = await fetch(`http://127.0.0.1:${port}/model/status`)
-      if (!statusRes.ok) return
-      const status: { state: string; progress: number } = await statusRes.json()
+  // Wait for terminal state so renderer can surface errors instead of getting stuck.
+  await new Promise<void>((resolve, reject) => {
+    const startedAt = Date.now()
+    const timeoutMs = 30 * 60 * 1000 // 30 minutes
 
-      if (!win.isDestroyed()) {
-        win.webContents.send('model:progress', status.progress)
+    const poll = setInterval(async () => {
+      if (Date.now() - startedAt > timeoutMs) {
+        clearInterval(poll)
+        reject(new Error('Model download timed out'))
+        return
       }
 
-      if (status.state === 'present' || status.state === 'error') {
-        clearInterval(pollInterval)
-        if (status.state === 'present' && !win.isDestroyed()) {
-          win.webContents.send('model:progress', 100)
+      try {
+        const statusRes = await fetch(`http://127.0.0.1:${port}/model/status`)
+        if (!statusRes.ok) return
+
+        const status: { state: string; progress: number; error?: string | null } = await statusRes.json()
+
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('model:progress', status.progress ?? 0)
         }
+
+        if (status.state === 'present') {
+          clearInterval(poll)
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('model:progress', 100)
+          }
+          resolve()
+          return
+        }
+
+        if (status.state === 'error') {
+          clearInterval(poll)
+          reject(new Error(status.error || 'Model download failed'))
+        }
+      } catch {
+        // Sidecar may be temporarily unavailable; keep polling until timeout.
       }
-    } catch {
-      // Sidecar not reachable — continue polling
-    }
-  }, 500)
+    }, 500)
+  })
 })
 
 // IPC handlers — app
