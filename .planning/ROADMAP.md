@@ -358,7 +358,7 @@ Plans:
 **Goal:** Replace faster-whisper with NVIDIA Parakeet ONNX in the sidecar while preserving transcript/timestamp contracts and explicit model download UX.
 **Requirements**: TRANS-01, TRANS-02, TRANS-03, TRANS-04, NAV-01, NAV-02, COMPAT-01, COMPAT-03
 **Depends on:** Phase 17
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 18-01: Replace model-management stack with Parakeet ONNX

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A cross-platform desktop application for recording audio, transcribing it locally via OpenAI Whisper, annotating the transcript with images and rich metadata, and exporting polished Markdown documentation — including an assets folder — to share with colleagues. Multiple sessions supported: create, close, browse, and reopen in-progress transcripts at any time.
+A cross-platform desktop application for recording audio, transcribing it locally via NVIDIA Parakeet ONNX, annotating the transcript with images and rich metadata, and exporting polished Markdown documentation — including an assets folder — to share with colleagues. Multiple sessions supported: create, close, browse, and reopen in-progress transcripts at any time.
 
 ## Core Value
 
@@ -19,7 +19,7 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 - [ ] User can select any available audio input device before recording
 - [ ] User can start and stop an audio recording via dedicated buttons
 - [ ] App provides real-time visual indication that audio is being captured (level meter or waveform)
-- [ ] App transcribes the recorded audio via a local OpenAI Whisper large model with automatic language detection, producing word-level timestamps
+- [ ] App transcribes the recorded audio via a local NVIDIA Parakeet ONNX model with automatic language handling, producing word-level timestamps
 - [ ] User can view the full transcribed text
 - [ ] User can click a single word or select a range of words in the transcript and see the corresponding position highlighted on the audio timeline
 - [ ] User can attach annotations to a selected word or word range (images from file picker or clipboard, audio clips, clipboard text/hyperlinks)
@@ -37,7 +37,7 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 
 - In-app screen capture — user pastes or picks screenshots manually
 - Multiple concurrent sessions / recording library — one session at a time *(reversed in Phase 8: user can switch between sessions)*
-- Cloud sync or remote Whisper API — local model only
+- Cloud sync or remote transcription API — local model only
 - OAuth / user accounts — single-user local app
 - Mobile or web deployment — desktop only
 
@@ -45,15 +45,15 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 
 - The user creates spoken technical notes and needs to turn them into documentation quickly, without switching tools or losing context.
 - Colleagues receive a `.md` file + `assets/` folder — no special tooling required on their end.
-- Whisper must use the `large` model and the `--word_timestamps` flag to enable per-word audio alignment.
+- Local ASR backend must provide per-word timestamp alignment for transcript navigation and annotations.
 - The annotation interaction is text-first: the user works in the transcript, not on a raw waveform. Word selections map to audio timestamps internally.
 - CSS Anchor Positioning (`anchor()` / `position-anchor`) and native `<dialog>` are target APIs for the annotation UI.
 
 ## Constraints
 
-- **Tech stack**: Electron (shell) + Vue 3 + TypeScript + Vite (renderer) + Python FastAPI sidecar (Whisper backend) — chosen for cross-platform desktop capability and native OS access
+- **Tech stack**: Electron (shell) + Vue 3 + TypeScript + Vite (renderer) + Python FastAPI sidecar (Parakeet ONNX backend) — chosen for cross-platform desktop capability and native OS access
 - **Platform**: macOS, Windows, Linux — no platform-specific APIs in business logic
-- **Whisper model**: `large` only, auto language detection — no smaller models, no remote API
+- **ASR model**: NVIDIA Parakeet ONNX, local-only execution, no remote API
 - **Packaging**: Must run as a standalone desktop app (electron-builder); Python sidecar bundled or installed via setup step
 - **Annotations**: Non-overlapping, tied to word-range spans in the transcript
 
@@ -63,7 +63,7 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 | --- | --- | --- |
 | Electron over Tauri | Python sidecar integration simpler; Rust not needed; team familiarity | - Pending |
 | Vue 3 over React | User preference | - Pending |
-| Local Whisper `large` model | User requirement; privacy; no API cost | - Pending |
+| Local Parakeet ONNX model | User requirement; privacy; no API cost | Implemented in Phase 18 |
 | Text-first annotation (not waveform-first) | User clicks words, not timeline; lower cognitive load | - Pending |
 | `.md` + `assets/` export (not base64 embed) | Colleague usability; files remain editable | - Pending |
 | One session at a time | Simplifies state management; matches stated workflow | **Reversed in Phase 8** — user explicitly requested multi-session support |
@@ -86,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-13 after Phase 8 (Session Management) complete — milestone v1.0 fully complete with multi-session support*
+*Last updated: 2026-04-16 after Phase 18 (Parakeet ONNX migration) complete — sidecar ASR backend switched from Whisper to Parakeet*
