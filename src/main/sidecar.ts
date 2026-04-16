@@ -37,9 +37,23 @@ export async function startSidecar(): Promise<number> {
     command = process.platform === 'win32' ? 'poetry.exe' : 'poetry'
     args = ['run', 'python', '-m', 'app.main', '--port', String(port), '--user-data', userDataDir]
     cwd = sidecarDir
-    // Ensure Poetry's install directory is in PATH (installed to ~/.local/bin by default)
-    const poetryBinDir = path.join(require('os').homedir(), '.local', 'bin')
-    process.env.PATH = `${poetryBinDir}${path.delimiter}${process.env.PATH}`
+    // Prepend all known Poetry install locations to PATH so the platform-appropriate
+    // poetry / poetry.exe binary can be found regardless of how Poetry was installed.
+    const home = require('os').homedir()
+    const poetryBinPaths: string[] =
+      process.platform === 'win32'
+        ? [
+            // Official installer (https://install.python-poetry.org on Windows)
+            path.join(process.env['APPDATA'] || path.join(home, 'AppData', 'Roaming'), 'pypoetry', 'venv', 'Scripts'),
+            // Pipx-based install or pip install --user on Windows
+            path.join(process.env['APPDATA'] || path.join(home, 'AppData', 'Roaming'), 'Python', 'Scripts'),
+            path.join(process.env['LOCALAPPDATA'] || path.join(home, 'AppData', 'Local'), 'Programs', 'Python', 'Scripts'),
+          ]
+        : [
+            // Official installer on macOS/Linux: ~/.local/bin
+            path.join(home, '.local', 'bin'),
+          ]
+    process.env.PATH = `${poetryBinPaths.join(path.delimiter)}${path.delimiter}${process.env.PATH}`
   } else {
     // Production: use PyInstaller binary from extraResources
     const binaryName = process.platform === 'win32' ? 'amanuensis-sidecar.exe' : 'amanuensis-sidecar'

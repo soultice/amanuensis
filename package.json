@@ -63,8 +63,17 @@
         "win": {
             "target": "nsis"
         },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "shortcutName": "Amanuensis"
+        },
         "linux": {
-            "target": "AppImage"
+            "target": "AppImage",
+            "category": "AudioVideo",
+            "description": "Record audio, transcribe with local Whisper, annotate and export Markdown"
         }
     },
     "devDependencies": {
