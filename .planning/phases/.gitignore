@@ -34,3 +34,7 @@
 !14-copy-transcript-to-clipboard/**
 !15-waveform-horizontal-layout/
 !15-waveform-horizontal-layout/**
+!16-make-sure-the-project-is-easily-installable-on-other-systems-e-g-by-adding-engine-instructions-to-package-json-and-making-sure-the-registry-used-is-npmjs-org/
+!16-make-sure-the-project-is-easily-installable-on-other-systems-e-g-by-adding-engine-instructions-to-package-json-and-making-sure-the-registry-used-is-npmjs-org/**
+!17-i-want-to-make-sure-the-app-is-compatible-with-all-three-major-os-linux-macos-windows-meaning-i-should-be-able-to-install-it-bundled-to-an-app-or-by-checking-out-the-repository-and-working-on-it-to-contribute/
+!17-i-want-to-make-sure-the-app-is-compatible-with-all-three-major-os-linux-macos-windows-meaning-i-should-be-able-to-install-it-bundled-to-an-app-or-by-checking-out-the-repository-and-working-on-it-to-contribute/**
