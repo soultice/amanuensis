@@ -19,10 +19,10 @@
 | 7 | Image Export Formatting | Image annotations render as block elements in exported Markdown | Complete |
 | 8 | Session Management | User can maintain multiple transcript sessions, switch between them, close and reopen in-progress work | Complete |
 | 9 | UI Overhaul | Solarized palette (light + dark mode), reading-optimised transcript panel | Complete |
-| 10 | Packaging & Distribution | Single installer per platform shipping Electron + frozen Python sidecar | Pending |
-| 12 | Auto-Save Indicator & Manual Save Trigger | Auto-save countdown + manual save button | Pending |
-| 13 | Editable Session Title | User can rename sessions; export reflects title | Pending |
-| 14 | Copy Transcript to Clipboard | One-click copy of full transcript text | Pending |
+| 10 | Packaging & Distribution | Single installer per platform shipping Electron + frozen Python sidecar | Complete |
+| 12 | Auto-Save Indicator & Manual Save Trigger | Auto-save countdown + manual save button | Complete |
+| 13 | Editable Session Title | User can rename sessions; export reflects title | Complete |
+| 14 | Copy Transcript to Clipboard | One-click copy of full transcript text | Complete |
 
 ---
 
@@ -329,6 +329,97 @@
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 15 to break down)
+
+### Phase 16: Make project installable on any machine ✓
+
+**Goal:** Ensure anyone can clone and `npm install` without a corporate registry override.
+**Requirements**: INSTALL-01, INSTALL-02, INSTALL-03
+**Depends on:** Phase 15
+**Plans:** 1 plan
+**Completed:** 2026-04-16
+
+Plans:
+- [x] 16-01: Add .npmrc, npm engine constraint, and README prerequisites (2026-04-16)
+
+### Phase 17: "make sure the project is easily installable on other systems, e.g. by adding engine instructions to package.json and making sure the registry used is npmjs.org"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 17 to break down)
+
+### Phase 18: "make sure the project is easily installable on other systems, e.g. by adding engine instructions to package.json and making sure the registry used is npmjs.org"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 17
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
+### Phase 19: "make sure the project is easily installable on other systems, e.g. by adding engine instructions to package.json and making sure the registry used is npmjs.org"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 18
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 19 to break down)
+
+### Phase 20: "make sure the project is easily installable on other systems, e.g. by adding engine instructions to package.json and making sure the registry used is npmjs.org"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 19
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 20 to break down)
+
+### Phase 21: "make sure the project is easily installable on other systems, e.g. by adding engine instructions to package.json and making sure the registry used is npmjs.org"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 20
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 21 to break down)
+
+### Phase 22: "make sure the project is easily installable on other systems, e.g. by adding engine instructions to package.json and making sure the registry used is npmjs.org"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 21
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 22 to break down)
+
+### Phase 23: "make sure the project is easily installable on other systems, e.g. by adding engine instructions to package.json and making sure the registry used is npmjs.org"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 22
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 23 to break down)
+
+### Phase 24: "make sure the project is easily installable on other systems, e.g. by adding engine instructions to package.json and making sure the registry used is npmjs.org"
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 23
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 24 to break down)
 
 ---
 *Roadmap last cleaned: 2026-04-14*
