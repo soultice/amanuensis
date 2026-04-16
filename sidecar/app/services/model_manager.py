@@ -4,6 +4,7 @@ Checks presence, downloads via huggingface_hub, reports progress via callback.
 """
 from __future__ import annotations
 
+import shutil
 import threading
 from pathlib import Path
 from typing import Callable, Literal, Optional
@@ -14,7 +15,12 @@ ModelState = Literal["present", "downloading", "missing", "error"]
 class ModelManager:
     MODEL_REPO = "istupakov/parakeet-tdt-0.6b-v3-onnx"
     # Required files emitted by the Parakeet ONNX export repo.
-    MODEL_MARKERS = ("encoder-model.onnx", "decoder_joint-model.onnx", "vocab.txt")
+    MODEL_MARKERS = (
+        "encoder-model.onnx",
+        "encoder-model.onnx.data",
+        "decoder_joint-model.onnx",
+        "vocab.txt",
+    )
 
     def __init__(self, user_data_dir: str) -> None:
         self._model_dir = Path(user_data_dir) / "models" / "parakeet-tdt-0.6b-v3"
@@ -62,6 +68,9 @@ class ModelManager:
         try:
             from huggingface_hub import snapshot_download  # type: ignore
 
+            # Clean partial/incompatible downloads so snapshot download resolves a full set.
+            if self._model_dir.exists() and not self._has_markers():
+                shutil.rmtree(self._model_dir, ignore_errors=True)
             self._model_dir.mkdir(parents=True, exist_ok=True)
 
             snapshot_download(

@@ -75,6 +75,7 @@ ipcMain.handle('model:get-status', async () => {
   const modelDir = join(app.getPath('userData'), 'models', 'parakeet-tdt-0.6b-v3')
   const hasModel =
     existsSync(join(modelDir, 'encoder-model.onnx')) &&
+    existsSync(join(modelDir, 'encoder-model.onnx.data')) &&
     existsSync(join(modelDir, 'decoder_joint-model.onnx')) &&
     existsSync(join(modelDir, 'vocab.txt'))
   return { state: hasModel ? 'present' : 'missing', progress: 0, error: null }

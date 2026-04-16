@@ -92,6 +92,13 @@ def _tokens_to_words(tokens: list[str], timestamps: list[float], segment_id: int
     return words
 
 
+def _providers_for_device(device: str) -> list[str]:
+    # Avoid onnxruntime default provider auto-selection (CoreML can fail for this model on macOS).
+    if device == "cuda":
+        return ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    return ["CPUExecutionProvider"]
+
+
 def get_model(model_dir: Path, device: str = "auto") -> Any:
     """Load ONNX model once and cache it."""
     global _model
@@ -103,6 +110,7 @@ def get_model(model_dir: Path, device: str = "auto") -> Any:
                 loaded = onnx_asr.load_model(
                     "nemo-parakeet-tdt-0.6b-v3",
                     str(model_dir),
+                    providers=_providers_for_device(device),
                 )
                 if hasattr(loaded, "with_timestamps"):
                     loaded = loaded.with_timestamps()
