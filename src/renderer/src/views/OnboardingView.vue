@@ -17,13 +17,13 @@
 
         <!-- downloading -->
         <div v-else-if="modelStore.state === 'downloading'" class="status-badge status--downloading">
-          <p>Downloading Whisper large-v3… {{ modelStore.progress }}%</p>
+          <p>Downloading NVIDIA Parakeet model… {{ modelStore.progress }}%</p>
           <progress :value="modelStore.progress" max="100" />
         </div>
 
         <!-- missing -->
         <div v-else-if="modelStore.state === 'missing'" class="status-badge status--missing">
-          <p>Whisper large-v3 model is not downloaded (~3 GB required)</p>
+          <p>NVIDIA Parakeet model is not downloaded (~600MB required)</p>
           <button class="btn-primary" @click="modelStore.startDownload()">
             Download Model
           </button>

@@ -71,9 +71,9 @@ ipcMain.handle('model:get-status', async () => {
       // fallthrough to filesystem check
     }
   }
-  // Fallback: check userData directly for model.bin presence
-  const modelBin = join(app.getPath('userData'), 'models', 'large-v3', 'model.bin')
-  return { state: existsSync(modelBin) ? 'present' : 'missing', progress: 0, error: null }
+  // Fallback: check userData directly for ONNX model presence
+  const modelOnnx = join(app.getPath('userData'), 'models', 'parakeet-tdt-0.6b-v3', 'model.onnx')
+  return { state: existsSync(modelOnnx) ? 'present' : 'missing', progress: 0, error: null }
 })
 
 ipcMain.handle('model:download', async () => {

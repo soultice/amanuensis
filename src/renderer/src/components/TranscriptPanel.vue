@@ -29,7 +29,7 @@
     <!-- Transcribing — unchanged from Phase 2 -->
     <div v-else-if="transcriptStore.isTranscribing" class="transcript-panel__progress">
       <div class="transcript-panel__spinner" />
-      <p class="transcript-panel__progress-label">Transcribing with Whisper large-v3…</p>
+      <p class="transcript-panel__progress-label">Transcribing with NVIDIA Parakeet…</p>
       <p class="transcript-panel__progress-hint">
         This may take a few minutes depending on recording length and hardware.
       </p>
@@ -45,7 +45,7 @@
     <div v-else-if="transcriptStore.hasTranscript" class="transcript-panel__content">
       <div class="transcript-panel__meta">
         <span>{{ transcriptStore.words.length }} words</span>
-        <span>{{ transcriptStore.language.toUpperCase() }}</span>
+        <span v-if="transcriptStore.language">{{ transcriptStore.language.toUpperCase() }}</span>
         <span>{{ formatDuration(transcriptStore.duration) }}</span>
       </div>
 

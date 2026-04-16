@@ -73,7 +73,7 @@
         v-if="recordingStore.hasRecording"
         class="toolbar__btn toolbar__btn--transcribe"
         :disabled="props.isTranscribing"
-        title="Transcribe recording with Whisper"
+        title="Transcribe recording with local ASR model"
         @click="emit('transcribe')"
       >
         {{ props.isTranscribing ? 'Transcribing…' : 'Transcribe' }}

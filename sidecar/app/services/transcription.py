@@ -1,101 +1,148 @@
 """
-Transcription service using faster-whisper large-v3.
-WhisperModel is loaded once and cached as a module-level singleton.
-Subsequent calls to get_model() return the cached model instantly.
+Transcription service using NVIDIA Parakeet ONNX via onnx-asr.
+Model is loaded once and cached as a module-level singleton.
 """
 from __future__ import annotations
 
+import subprocess
 import threading
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional
 
-if TYPE_CHECKING:
-    from faster_whisper import WhisperModel  # type: ignore
+import soundfile as sf  # type: ignore
 
-_model: Optional["WhisperModel"] = None
+_model: Optional[Any] = None
 _model_lock = threading.Lock()
 
 
-def _compute_type_for_device(device: str) -> str:
-    """Return the best CTranslate2 compute_type for the chosen device.
-
-    - cuda  → float16  (full GPU precision; ~2× faster than int8 on CUDA)
-    - cpu   → int8     (quantised; fastest on CPU)
-    - auto  → auto     (let CTranslate2 decide; falls back gracefully)
-    """
-    return {"cuda": "float16", "cpu": "int8"}.get(device, "auto")
+def _resolve_ffmpeg_binary() -> str:
+    """Resolve ffmpeg executable from environment (default: ffmpeg)."""
+    return "ffmpeg"
 
 
-def get_model(model_dir: Path, device: str = "auto") -> "WhisperModel":
-    """
-    Load WhisperModel once and cache it.
-    Thread-safe double-checked locking pattern.
-    """
+def _convert_to_wav(audio_path: Path) -> Path:
+    """Convert uploaded audio (e.g., WebM/Opus) to 16kHz mono WAV for onnx-asr."""
+    wav_path = audio_path.with_suffix(".wav")
+    ffmpeg_bin = _resolve_ffmpeg_binary()
+    proc = subprocess.run(
+        [
+            ffmpeg_bin,
+            "-nostdin",
+            "-y",
+            "-i",
+            str(audio_path),
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            str(wav_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        stderr = (proc.stderr or "").strip()
+        raise RuntimeError(f"ffmpeg conversion failed: {stderr or proc.returncode}")
+    return wav_path
+
+
+def _tokens_to_words(tokens: list[str], timestamps: list[float], segment_id: int, word_id_start: int) -> list[dict]:
+    """Aggregate SentencePiece token timestamps to word-level timestamps."""
+    words: list[dict] = []
+    current_word = ""
+    current_start: Optional[float] = None
+    word_id = word_id_start
+
+    for idx, (token, ts) in enumerate(zip(tokens, timestamps)):
+        normalized = token.strip()
+        starts_new_word = normalized.startswith("▁") or not current_word
+
+        if starts_new_word and current_word:
+            words.append(
+                {
+                    "id": word_id,
+                    "word": current_word,
+                    "start": round(float(current_start or 0.0), 3),
+                    "end": round(float(ts), 3),
+                    "probability": 1.0,
+                    "segmentId": segment_id,
+                }
+            )
+            word_id += 1
+
+        if starts_new_word:
+            clean = normalized.replace("▁", "", 1).strip()
+            current_word = clean
+            current_start = float(ts)
+        else:
+            current_word += normalized
+
+    if current_word and current_start is not None:
+        end_ts = float(timestamps[-1]) + 0.1 if timestamps else float(current_start) + 0.1
+        words.append(
+            {
+                "id": word_id,
+                "word": current_word,
+                "start": round(float(current_start), 3),
+                "end": round(end_ts, 3),
+                "probability": 1.0,
+                "segmentId": segment_id,
+            }
+        )
+
+    return words
+
+
+def get_model(model_dir: Path, device: str = "auto") -> Any:
+    """Load ONNX model once and cache it."""
     global _model
     if _model is None:
         with _model_lock:
             if _model is None:
-                from faster_whisper import WhisperModel  # type: ignore
+                import onnx_asr  # type: ignore
 
-                compute_type = _compute_type_for_device(device)
-                _model = WhisperModel(
+                loaded = onnx_asr.load_model(
+                    "nemo-parakeet-tdt-0.6b-v3",
                     str(model_dir),
-                    device=device,         # "auto" | "cuda" | "cpu"
-                    compute_type=compute_type,
-                    num_workers=1,
                 )
+                if hasattr(loaded, "with_timestamps"):
+                    loaded = loaded.with_timestamps()
+                _model = loaded
     return _model
 
 
 def transcribe_file(model_dir: Path, audio_path: Path, device: str = "auto") -> dict:
-    """
-    Transcribe a single audio file and return word-level results.
-
-    Accepts WebM, WAV, or any format supported by PyAV (av 17+) —
-    faster-whisper uses decode_audio internally which handles WebM/Opus natively.
-
-    Returns:
-        {
-            "words": [{"id": int, "word": str, "start": float, "end": float, "probability": float}],
-            "language": str,
-            "duration": float
-        }
-    """
+    """Transcribe a single audio file and return word/segment timestamps."""
     model = get_model(model_dir, device=device)
 
-    segments_result, info = model.transcribe(
-        str(audio_path),
-        word_timestamps=True,
-        language=None,      # auto-detect (TRANS-02)
-        beam_size=5,
-        vad_filter=True,    # skip silence regions
-    )
+    wav_path = _convert_to_wav(audio_path)
+    try:
+        result = model.recognize(str(wav_path))
 
-    segments_list = []
-    words = []
-    word_id = 0
-    for seg_idx, segment in enumerate(segments_result):
-        segments_list.append({
-            "id": seg_idx,
-            "start": round(segment.start, 3),
-            "end": round(segment.end, 3),
-            "text": segment.text.strip(),
-        })
-        if segment.words:
-            for w in segment.words:
-                words.append({
-                    "id": word_id,
-                    "word": w.word,
-                    "start": round(w.start, 3),
-                    "end": round(w.end, 3),
-                    "probability": round(w.probability, 3),
-                    "segmentId": seg_idx,
-                })
-                word_id += 1
+        text = str(getattr(result, "text", "")).strip()
+        tokens = [str(t) for t in (getattr(result, "tokens", []) or [])]
+        timestamps = [float(t) for t in (getattr(result, "timestamps", []) or [])]
 
-    return {
-        "words": words,
-        "segments": segments_list,
-        "language": info.language,
-        "duration": round(info.duration, 2),
-    }
+        words = _tokens_to_words(tokens, timestamps, segment_id=0, word_id_start=0)
+
+        info = sf.info(str(wav_path))
+        duration = round(float(info.duration), 2)
+
+        segment_end = round(float(words[-1]["end"]), 3) if words else duration
+        segments = [
+            {
+                "id": 0,
+                "start": 0.0,
+                "end": segment_end,
+                "text": text,
+            }
+        ]
+
+        return {
+            "words": words,
+            "segments": segments,
+            "language": "",
+            "duration": duration,
+        }
+    finally:
+        wav_path.unlink(missing_ok=True)

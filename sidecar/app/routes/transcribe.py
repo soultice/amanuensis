@@ -23,15 +23,15 @@ async def get_transcription_status():
 @router.post("")
 async def transcribe_audio(audio: UploadFile = File(...)):
     """
-    Accept WebM audio file, transcribe with faster-whisper large-v3.
+    Accept WebM audio file, transcribe with the local Parakeet ONNX model.
 
-    Returns: {"words": [{id, word, start, end, probability}], "language": str, "duration": float}
+    Returns: {"words": [...], "segments": [...], "language": str, "duration": float}
 
     - 503: model not ready
     - 409: transcription already in progress
     """
     if state.model_manager is None or state.model_manager.state != "present":
-        raise HTTPException(status_code=503, detail="Whisper model not ready")
+        raise HTTPException(status_code=503, detail="ASR model not ready")
 
     if _transcribe_lock.locked():
         raise HTTPException(status_code=409, detail="Transcription already in progress")
