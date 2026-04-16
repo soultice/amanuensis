@@ -1,4 +1,4 @@
-<gsd-version v="2.1.1" />
+<gsd-version v="2.1.1" do-not-update />
 
 <gsd-arguments>
   <settings><keep-extra-args /></settings>
