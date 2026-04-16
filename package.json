@@ -6,7 +6,12 @@
     "author": "",
     "homepage": ".",
     "engines": {
-        "node": ">=18.0.0"
+        "node": ">=18.0.0",
+        "npm": ">=8.0.0"
+    },
+    "volta": {
+        "node": "22.14.0",
+        "npm": "11.2.0"
     },
     "scripts": {
         "dev": "electron-vite dev",
