@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to plan
-last_updated: "2026-04-16T19:29:10.332Z"
+last_updated: "2026-04-16T20:24:44.084Z"
 progress:
-  total_phases: 40
+  total_phases: 50
   completed_phases: 19
   total_plans: 41
   completed_plans: 41
@@ -65,3 +65,13 @@ Start `/gsd-new-milestone` to define v2.0 scope.
 - Phase 30 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
 - Phase 31 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
 - Phase 32 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
+- Phase 33 added: "transcription should be live from now on"
+- Phase 34 added: "transcription should be live from now on"
+- Phase 35 added: "transcription should be live from now on"
+- Phase 36 added: "transcription should be live from now on"
+- Phase 37 added: "transcription should be live from now on"
+- Phase 38 added: "transcription should be live from now on"
+- Phase 39 added: "transcription should be live from now on"
+- Phase 40 added: "transcription should be live from now on"
+- Phase 41 added: "transcription should be live from now on"
+- Phase 42 added: "transcription should be live from now on"
