@@ -12,6 +12,7 @@ and Linux — both for running the app in development and for building distribut
 | Python | ≥ 3.10, < 3.15 | Use [pyenv](https://github.com/pyenv/pyenv) on macOS/Linux, or [python.org](https://python.org) on Windows |
 | Poetry | ≥ 1.8 | [Installation instructions below](#installing-poetry) |
 | Git | Any recent | — |
+| ffmpeg | Any recent | Required for WebM → WAV conversion before Parakeet inference |
 
 ## Installing Poetry
 
@@ -60,7 +61,7 @@ npm run dev
 
 Electron opens with hot-reload. The Python sidecar is spawned automatically via Poetry.
 
-> **First launch:** The app will prompt you to download the Whisper large-v3 model (~3 GB).
+> **First launch:** The app will prompt you to download the NVIDIA Parakeet ONNX model (~600MB).
 > This only happens once; the model is cached in your OS user-data directory.
 
 ---

@@ -1,6 +1,6 @@
 # Amanuensis
 
-Cross-platform desktop app for recording audio, transcribing with local Whisper large-v3, annotating the transcript, and exporting Markdown documentation.
+Cross-platform desktop app for recording audio, transcribing with local NVIDIA Parakeet ONNX, annotating the transcript, and exporting Markdown documentation.
 
 ## Prerequisites
 
@@ -8,6 +8,7 @@ Cross-platform desktop app for recording audio, transcribing with local Whisper 
 - **npm** ≥ 8 (bundled with Node.js; tested on v11)
 - **Python** ≥ 3.10
 - **[Poetry](https://python-poetry.org/docs/#installation)** ≥ 1.8
+- **ffmpeg** available on PATH (required for audio conversion before transcription)
 
 Install Poetry:
 ```bash
@@ -42,7 +43,7 @@ Electron opens with hot-reload. The Python FastAPI sidecar is spawned automatica
 
 ### First run
 
-On first launch the app shows an onboarding screen. The Whisper large-v3 model (~3 GB) must be downloaded before transcription is available. Click **Download Model** and wait for the progress indicator to complete.
+On first launch the app shows an onboarding screen. The NVIDIA Parakeet ONNX model (~600MB) must be downloaded before transcription is available. Click **Download Model** and wait for the progress indicator to complete.
 
 ## Project Structure
 
@@ -79,7 +80,7 @@ sidecar/                  Python FastAPI backend
       health.py           GET /health
       model.py            GET /model/status, POST /model/download
     services/
-      model_manager.py    Whisper model presence check + download
+      model_manager.py    Parakeet model presence check + download
 
 .planning/                GSD planning artifacts
 ```
@@ -127,7 +128,8 @@ npm run build:electron   # produces release/
 
 ### Notes
 
-- **Whisper model (~3 GB) is not bundled.** It is downloaded on first launch via the onboarding screen.
+- **NVIDIA Parakeet model (~600MB) is not bundled.** It is downloaded on first launch via the onboarding screen.
+- **ffmpeg is required at runtime** for WebM → WAV conversion before ASR inference.
 - Build each platform's binary on the target platform (macOS binary on macOS, etc.).
 - For CI, use GitHub Actions with separate jobs per platform.
 

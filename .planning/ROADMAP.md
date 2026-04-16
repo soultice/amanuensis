@@ -361,9 +361,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 18-01: Replace model-management stack with Parakeet ONNX
-- [ ] 18-02: Implement Parakeet transcription path and preserve UI contract
-- [ ] 18-03: Packaging alignment, docs updates, and roadmap bookkeeping
+- [x] 18-01: Replace model-management stack with Parakeet ONNX
+- [x] 18-02: Implement Parakeet transcription path and preserve UI contract
+- [x] 18-03: Packaging alignment, docs updates, and roadmap bookkeeping
 
 ### Phase 19: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
 

@@ -10,15 +10,16 @@ def importlib_path(pkg):
 
 block_cipher = None
 
-_ct2_path = importlib_path('ctranslate2')
+_onnx_asr_path = importlib_path('onnx_asr')
+
 
 a = Analysis(
     ['app/main.py'],
     pathex=['.'],
     binaries=[],
     datas=[
-        (_ct2_path, 'ctranslate2'),
-    ] if _ct2_path else [],
+        (_onnx_asr_path, 'onnx_asr'),
+    ] if _onnx_asr_path else [],
     hiddenimports=[
         # uvicorn internals
         'uvicorn.logging',
@@ -35,36 +36,18 @@ a = Analysis(
         'uvicorn.protocols.websockets.wsproto_impl',
         'uvicorn.lifespan',
         'uvicorn.lifespan.on',
-        # faster-whisper and ctranslate2
-        'faster_whisper',
-        'faster_whisper.transcribe',
-        'faster_whisper.audio',
-        'faster_whisper.feature_extractor',
-        'faster_whisper.tokenizer',
-        'faster_whisper.vad',
-        'ctranslate2',
-        'ctranslate2.specs',
-        'ctranslate2.converters',
+        # Parakeet runtime
+        'onnx_asr',
+        'onnx_asr.models',
+        'onnx_asr.models.nemo',
+        'onnxruntime',
+        'onnxruntime.capi',
+        'onnxruntime.capi._pybind_state',
         # huggingface_hub
         'huggingface_hub',
         'huggingface_hub.utils',
         'huggingface_hub.utils._cache_manager',
         'huggingface_hub.utils._headers',
-        # tokenizers (Rust extension)
-        'tokenizers',
-        'tokenizers.models',
-        'tokenizers.pre_tokenizers',
-        'tokenizers.decoders',
-        'tokenizers.processors',
-        'tokenizers.normalizers',
-        # av (PyAV — audio decoding)
-        'av',
-        'av.audio',
-        'av.audio.stream',
-        'av.audio.frame',
-        'av.audio.resampler',
-        'av.container',
-        'av.codec',
         # anyio
         'anyio',
         'anyio._backends._asyncio',
@@ -83,10 +66,11 @@ a = Analysis(
         'fastapi.middleware.cors',
         # multipart
         'multipart',
-        # numpy
+        # numpy/soundfile
         'numpy',
         'numpy.core',
         'numpy.core._multiarray_umath',
+        'soundfile',
     ],
     hookspath=[],
     hooksconfig={},
