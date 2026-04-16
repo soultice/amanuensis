@@ -1,4 +1,4 @@
-<gsd-version v="1.12.4" />
+<gsd-version v="2.1.1" />
 
 <gsd-arguments>
   <settings>
@@ -20,7 +20,7 @@
     <args>
       <arg string="init" />
       <arg string="execute-phase" />
-      <arg name="phase" wrap='"' />
+      <arg name="phase" />
     </args>
     <outs>
       <out type="string" name="init" />

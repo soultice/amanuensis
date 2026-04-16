@@ -1,4 +1,4 @@
-<gsd-version v="1.12.5" />
+<gsd-version v="2.1.1" />
 
 <gsd-arguments>
   <settings><keep-extra-args /></settings>
@@ -10,7 +10,7 @@
     <args>
       <arg string="init" />
       <arg string="plan-phase" />
-      <arg name="phase" wrap='"' />
+      <arg name="phase" />
     </args>
     <outs>
       <out type="string" name="init" />

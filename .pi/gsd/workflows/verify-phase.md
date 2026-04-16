@@ -1,4 +1,4 @@
-<gsd-version v="1.12.4" />
+<gsd-version v="2.1.1" />
 
 <gsd-arguments>
   <settings><keep-extra-args /></settings>
@@ -10,6 +10,7 @@
     <args>
       <arg string="init" />
       <arg string="phase-op" />
+      <arg name="phase" />
     </args>
     <outs>
       <out type="string" name="init" />
@@ -46,6 +47,7 @@
     <args>
       <arg string="roadmap" />
       <arg string="get-phase" />
+      <arg name="phase" />
     </args>
     <outs>
       <out type="string" name="roadmap-phase" />
