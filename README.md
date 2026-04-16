@@ -4,7 +4,8 @@ Cross-platform desktop app for recording audio, transcribing with local Whisper 
 
 ## Prerequisites
 
-- **Node.js** ≥ 18
+- **Node.js** ≥ 18 (tested on v22)
+- **npm** ≥ 8 (bundled with Node.js; tested on v11)
 - **Python** ≥ 3.10
 - **[Poetry](https://python-poetry.org/docs/#installation)** ≥ 1.8
 
