@@ -19,7 +19,7 @@ async def model_status():
 
 @router.post("/download")
 async def start_download():
-    """Trigger model download in a background thread. Idempotent."""
+    """Trigger ASR model download in a background thread. Idempotent."""
     if state.model_manager is None:
         raise HTTPException(status_code=503, detail="Model manager not initialised")
 

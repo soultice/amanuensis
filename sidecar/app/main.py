@@ -49,8 +49,8 @@ if __name__ == "__main__":
         type=str,
         default="auto",
         choices=["auto", "cuda", "cpu"],
-        help="Compute device for Whisper: 'auto' (GPU if available, else CPU), "
-             "'cuda' (force GPU — fails if CUDA unavailable), 'cpu' (force CPU)",
+        help="Compute device hint for ASR runtime: 'auto' (GPU if available, else CPU), "
+             "'cuda' (force GPU), 'cpu' (force CPU)",
     )
     args = parser.parse_args()
 

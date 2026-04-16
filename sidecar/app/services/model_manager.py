@@ -1,5 +1,5 @@
 """
-Model manager for Whisper large-v3.
+Model manager for Parakeet ONNX.
 Checks presence, downloads via huggingface_hub, reports progress via callback.
 """
 from __future__ import annotations
@@ -12,11 +12,11 @@ ModelState = Literal["present", "downloading", "missing", "error"]
 
 
 class ModelManager:
-    MODEL_REPO = "Systran/faster-whisper-large-v3"
-    MODEL_MARKER = "model.bin"  # File whose existence confirms a complete download
+    MODEL_REPO = "istupakov/parakeet-tdt-0.6b-v3-onnx"
+    MODEL_MARKERS = ("model.onnx", "tokens.txt")
 
     def __init__(self, user_data_dir: str) -> None:
-        self._model_dir = Path(user_data_dir) / "models" / "large-v3"
+        self._model_dir = Path(user_data_dir) / "models" / "parakeet-tdt-0.6b-v3"
         self._state: ModelState = "missing"
         self._progress: int = 0
         self._error: Optional[str] = None
@@ -24,12 +24,12 @@ class ModelManager:
         self._progress_callback: Optional[Callable[[int], None]] = None
         self._refresh_state()
 
+    def _has_markers(self) -> bool:
+        return all((self._model_dir / marker).exists() for marker in self.MODEL_MARKERS)
+
     def _refresh_state(self) -> None:
         """Check filesystem to determine current model state."""
-        if (self._model_dir / self.MODEL_MARKER).exists():
-            self._state = "present"
-        else:
-            self._state = "missing"
+        self._state = "present" if self._has_markers() else "missing"
 
     @property
     def state(self) -> ModelState:
@@ -63,7 +63,6 @@ class ModelManager:
 
             self._model_dir.mkdir(parents=True, exist_ok=True)
 
-            # snapshot_download handles resumption if interrupted
             snapshot_download(
                 repo_id=self.MODEL_REPO,
                 local_dir=str(self._model_dir),
@@ -71,6 +70,10 @@ class ModelManager:
             )
 
             with self._lock:
+                if not self._has_markers():
+                    raise RuntimeError(
+                        f"Downloaded model missing expected markers: {', '.join(self.MODEL_MARKERS)}"
+                    )
                 self._state = "present"
                 self._progress = 100
 
