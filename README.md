@@ -16,6 +16,8 @@ curl -sSL https://install.python-poetry.org | python3 -
 
 ## Development Setup
 
+> **New contributor?** See [CONTRIBUTING.md](./CONTRIBUTING.md) for platform-specific setup instructions (Windows, Linux, macOS).
+
 ### 1. Install Node.js dependencies
 
 ```bash
