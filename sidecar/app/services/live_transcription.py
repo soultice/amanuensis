@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import tempfile
 import time
 import uuid
@@ -14,6 +15,17 @@ TTFT_P95_TARGET_MS = 1500
 UPDATE_CADENCE_P50_TARGET_MS = 600
 QUEUE_DEPTH_P95_TARGET = 1
 FINALIZE_P95_TARGET_MS = 2500
+
+LIVE_SPEED_MODE_SAFE_AUTO = 'safe_auto'
+LIVE_SPEED_MODE_AGGRESSIVE_INTERNAL = 'aggressive_internal'
+LIVE_SPEED_MODE_ENV_VAR = 'AMANUENSIS_LIVE_SPEED_MODE'
+
+
+def resolve_live_speed_mode() -> str:
+    configured = (os.getenv(LIVE_SPEED_MODE_ENV_VAR) or '').strip().lower()
+    if configured in {LIVE_SPEED_MODE_SAFE_AUTO, LIVE_SPEED_MODE_AGGRESSIVE_INTERNAL}:
+        return configured
+    return LIVE_SPEED_MODE_SAFE_AUTO
 
 
 class LiveSessionError(Exception):
@@ -49,6 +61,7 @@ class LiveSession:
     warning: str | None = None
     error: str | None = None
     queue_depth: int = 0
+    speed_mode: str = LIVE_SPEED_MODE_SAFE_AUTO
     first_chunk_received_at: float | None = None
     first_result_emitted_at: float | None = None
     last_result_emitted_at: float | None = None
@@ -68,27 +81,42 @@ class LiveTranscriptionManager:
 
     async def start_session(self, sample_rate: int, channels: int, mime_type: str) -> dict[str, Any]:
         session_id = str(uuid.uuid4())
+        configured_speed_mode = (os.getenv(LIVE_SPEED_MODE_ENV_VAR) or '').strip().lower()
+        resolved_speed_mode = resolve_live_speed_mode()
+        warning: str | None = None
+        if configured_speed_mode and configured_speed_mode not in {
+            LIVE_SPEED_MODE_SAFE_AUTO,
+            LIVE_SPEED_MODE_AGGRESSIVE_INTERNAL,
+        }:
+            warning = 'Unknown AMANUENSIS_LIVE_SPEED_MODE, using safe_auto'
+
         session = LiveSession(
             id=session_id,
             sample_rate=sample_rate,
             channels=channels,
             mime_type=mime_type,
             created_at=time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            speed_mode=resolved_speed_mode,
+            warning=warning,
         )
 
         async with self._sessions_lock:
             self._sessions[session_id] = session
 
-        return {
+        payload: dict[str, Any] = {
             'sessionId': session.id,
             'state': session.state,
             'createdAt': session.created_at,
+            'speedMode': session.speed_mode,
             'defaults': {
                 'chunkWindowMs': 500,
                 'statusPollMs': 500,
                 'overlapMs': 200,
             },
         }
+        if warning:
+            payload['warning'] = warning
+        return payload
 
     async def _require_session(self, session_id: str) -> LiveSession:
         async with self._sessions_lock:

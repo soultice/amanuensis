@@ -143,6 +143,24 @@ def test_live_status_reports_latency_targets() -> None:
     assert payload['metrics']['targets']['queueDepthP95'] == 1
 
 
+def test_live_speed_mode_defaults_to_safe_auto(monkeypatch) -> None:
+    client = _client()
+    monkeypatch.delenv('AMANUENSIS_LIVE_SPEED_MODE', raising=False)
+
+    start = client.post('/transcribe/live/start', json={'sampleRate': 16000, 'channels': 1, 'mimeType': 'audio/webm'})
+    assert start.status_code == 200
+    assert start.json()['speedMode'] == 'safe_auto'
+
+
+def test_live_speed_mode_env_aggressive_internal(monkeypatch) -> None:
+    client = _client()
+    monkeypatch.setenv('AMANUENSIS_LIVE_SPEED_MODE', 'aggressive_internal')
+
+    start = client.post('/transcribe/live/start', json={'sampleRate': 16000, 'channels': 1, 'mimeType': 'audio/webm'})
+    assert start.status_code == 200
+    assert start.json()['speedMode'] == 'aggressive_internal'
+
+
 def test_live_failure_does_not_abort_session(monkeypatch) -> None:
     client = _client()
     start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
