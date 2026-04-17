@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to plan
-last_updated: "2026-04-16T20:24:44.084Z"
+last_updated: "2026-04-17T13:02:39.000Z"
 progress:
-  total_phases: 50
-  completed_phases: 19
-  total_plans: 41
-  completed_plans: 41
+  total_phases: 21
+  completed_phases: 20
+  total_plans: 45
+  completed_plans: 45
 ---
 
 # State: Amanuensis — v1.0 COMPLETE
@@ -18,7 +18,7 @@ progress:
 
 ## Summary
 
-All 17 phases executed. 37 plans complete. Milestone v1.0 shipped.
+Milestone v1.0 shipped with Phases 1–17 complete. Post-milestone follow-up work then delivered Phase 18 (Parakeet migration), Phase 19 (live transcription), and Phase 20 (live-first transcribe cleanup). Phase 19 still has separate human UX verification notes, but all Phase 20 execution work is now complete.
 
 ## Phase Status
 
@@ -41,37 +41,26 @@ All 17 phases executed. 37 plans complete. Milestone v1.0 shipped.
 | 15 | Waveform Horizontal Layout | 1/1 | ✓ Complete |
 | 16 | Project Installability | 1/1 | ✓ Complete |
 | 17 | Cross-platform Compatibility | 3/3 | ✓ Complete |
+| 18 | Parakeet ONNX Migration | 3/3 | ✓ Complete |
+| 19 | Live Transcription | 3/3 | ⚠ Human verification needed |
+| 20 | Remove Transcribe Button | 2/2 | ✓ Complete |
 
 ## Next Milestone
 
 Start `/gsd-new-milestone` to define v2.0 scope.
+
+## Session Resume
+
+- **Stopped at:** Phase 21 context gathered
+- **Resume file:** `.planning/phases/21-increase-speed-of-live-transcription/21-CONTEXT.md`
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
 - Phase 18 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 19 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 20 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 21 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 22 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 23 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 24 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 25 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 26 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 27 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 28 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 29 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 30 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 31 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 32 added: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-- Phase 33 added: "transcription should be live from now on"
-- Phase 34 added: "transcription should be live from now on"
-- Phase 35 added: "transcription should be live from now on"
-- Phase 36 added: "transcription should be live from now on"
-- Phase 37 added: "transcription should be live from now on"
-- Phase 38 added: "transcription should be live from now on"
-- Phase 39 added: "transcription should be live from now on"
-- Phase 40 added: "transcription should be live from now on"
-- Phase 41 added: "transcription should be live from now on"
-- Phase 42 added: "transcription should be live from now on"
+- Phase 19 added: "transcription should be live from now on"
+- Phase 20 added: "remove the transcribe button and functionality it is not needed anymore due to the live transcription"
+- Duplicate scaffold artifacts pruned: installability clones (17–24), Parakeet clones (19–32), and live-transcription clones (34–46)
+- Phase 21 added: "increase speed of live transcription"
+- Phase 21 context gathered at `.planning/phases/21-increase-speed-of-live-transcription/21-CONTEXT.md`
