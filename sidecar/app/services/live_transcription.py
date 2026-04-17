@@ -66,6 +66,8 @@ class LiveSession:
     warning: str | None = None
     error: str | None = None
     queue_depth: int = 0
+    worker_busy: bool = False
+    waiting_requests: int = 0
     speed_mode: str = LIVE_SPEED_MODE_SAFE_AUTO
     first_chunk_received_at: float | None = None
     first_result_emitted_at: float | None = None
@@ -75,6 +77,7 @@ class LiveSession:
     chunk_latency_ms_samples: list[int] = field(default_factory=list)
     boundaries: list[dict[str, Any]] = field(default_factory=list)
     accumulated_chunks: list[bytes] = field(default_factory=list)
+    accumulated_chunk_ranges_ms: list[tuple[int, int]] = field(default_factory=list)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
@@ -168,6 +171,31 @@ class LiveTranscriptionManager:
         duration = float(result.get('duration', 0.0) or 0.0)
         return words, segments, language, duration
 
+    def resolve_decode_window_start_index(
+        self,
+        *,
+        session: LiveSession,
+        chunk_start_ms: int,
+        chunk_end_ms: int,
+        seq: int,
+    ) -> int:
+        chunks = session.accumulated_chunks
+        if not chunks:
+            return 0
+
+        if seq % FULL_RECONCILE_EVERY_N_CHUNKS == 0:
+            return 0
+
+        max_window_ms = (
+            SAFE_AUTO_MAX_WINDOW_MS
+            if session.speed_mode == LIVE_SPEED_MODE_SAFE_AUTO
+            else AGGRESSIVE_MAX_WINDOW_MS
+        )
+        chunk_span_ms = max(1, chunk_end_ms - chunk_start_ms)
+        window_span_ms = max_window_ms + WINDOW_OVERLAP_MS
+        window_chunk_count = max(1, int(window_span_ms / chunk_span_ms))
+        return max(0, len(chunks) - window_chunk_count)
+
     def build_decode_window_blob(
         self,
         *,
@@ -180,25 +208,81 @@ class LiveTranscriptionManager:
         if not chunks:
             return b''
 
-        if seq % FULL_RECONCILE_EVERY_N_CHUNKS == 0:
-            return b''.join(chunks)
-
-        max_window_ms = (
-            SAFE_AUTO_MAX_WINDOW_MS
-            if session.speed_mode == LIVE_SPEED_MODE_SAFE_AUTO
-            else AGGRESSIVE_MAX_WINDOW_MS
+        start_index = self.resolve_decode_window_start_index(
+            session=session,
+            chunk_start_ms=chunk_start_ms,
+            chunk_end_ms=chunk_end_ms,
+            seq=seq,
         )
-        chunk_span_ms = max(1, chunk_end_ms - chunk_start_ms)
-        window_span_ms = max_window_ms + WINDOW_OVERLAP_MS
-        window_chunk_count = max(1, int(window_span_ms / chunk_span_ms))
 
-        tail = chunks[-window_chunk_count:]
+        tail = chunks[start_index:]
         # MediaRecorder chunks after the first one usually do not contain the WebM
         # EBML header. Keep the first chunk as a stable prefix when we window,
         # otherwise ffmpeg intermittently fails with EBML header parse errors.
-        if len(tail) < len(chunks):
+        if start_index > 0:
             return b''.join([chunks[0], *tail])
         return b''.join(tail)
+
+    @staticmethod
+    def _shift_words(words: list[dict[str, Any]], offset_s: float) -> list[dict[str, Any]]:
+        shifted: list[dict[str, Any]] = []
+        for idx, word in enumerate(words):
+            shifted.append(
+                {
+                    'id': idx,
+                    'word': str(word.get('word', '')),
+                    'start': round(float(word.get('start', 0.0)) + offset_s, 3),
+                    'end': round(float(word.get('end', 0.0)) + offset_s, 3),
+                    'probability': float(word.get('probability', 1.0)),
+                    'segmentId': int(word.get('segmentId', 0)),
+                }
+            )
+        return shifted
+
+    @staticmethod
+    def _merge_words(
+        existing_words: list[dict[str, Any]],
+        window_words: list[dict[str, Any]],
+        *,
+        replace_from_s: float,
+    ) -> list[dict[str, Any]]:
+        prefix = [dict(word) for word in existing_words if float(word.get('end', 0.0)) <= replace_from_s]
+        merged = prefix + [dict(word) for word in window_words]
+        for idx, word in enumerate(merged):
+            word['id'] = idx
+        return merged
+
+    @staticmethod
+    def _rebuild_segments_from_words(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if not words:
+            return []
+        return [
+            {
+                'id': 0,
+                'start': float(words[0].get('start', 0.0)),
+                'end': float(words[-1].get('end', 0.0)),
+                'text': ''.join(str(word.get('word', '')) for word in words).strip(),
+            }
+        ]
+
+    async def _transcribe_blob(self, *, blob: bytes, model_dir: Path, device: str) -> dict[str, Any]:
+        tmp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
+                tmp.write(blob)
+                tmp_path = Path(tmp.name)
+
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(
+                None,
+                self._transcribe_callable,
+                model_dir,
+                tmp_path,
+                device,
+            )
+        finally:
+            if tmp_path and tmp_path.exists():
+                tmp_path.unlink(missing_ok=True)
 
     async def ingest_chunk(
         self,
@@ -214,120 +298,165 @@ class LiveTranscriptionManager:
     ) -> dict[str, Any]:
         session = await self._require_session(session_id)
 
-        async with session.lock:
-            if session.state != 'live':
-                raise LiveTransitionError(f'Cannot ingest chunk while session is {session.state}')
+        session.waiting_requests += 1
+        lock_acquired = False
+        try:
+            async with session.lock:
+                lock_acquired = True
+                session.waiting_requests = max(0, session.waiting_requests - 1)
+                session.worker_busy = True
+                if session.state != 'live':
+                    raise LiveTransitionError(f'Cannot ingest chunk while session is {session.state}')
 
-            if seq <= session.last_seq:
-                raise LiveSequenceError(f'Chunk sequence must increase: got {seq}, last={session.last_seq}')
+                if seq <= session.last_seq:
+                    raise LiveSequenceError(f'Chunk sequence must increase: got {seq}, last={session.last_seq}')
 
-            started = time.perf_counter()
-            if session.first_chunk_received_at is None:
-                session.first_chunk_received_at = started
-            session.queue_depth += 1
-            tmp_path: Path | None = None
-            try:
-                session.accumulated_chunks.append(audio_bytes)
+                started = time.perf_counter()
+                if session.first_chunk_received_at is None:
+                    session.first_chunk_received_at = started
+                try:
+                    session.accumulated_chunks.append(audio_bytes)
+                    session.accumulated_chunk_ranges_ms.append((chunk_start_ms, chunk_end_ms))
 
-                decode_blob = self.build_decode_window_blob(
-                    session=session,
-                    chunk_start_ms=chunk_start_ms,
-                    chunk_end_ms=chunk_end_ms,
-                    seq=seq,
-                )
-                with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
-                    tmp.write(decode_blob)
-                    tmp_path = Path(tmp.name)
+                    decode_window_start_index = self.resolve_decode_window_start_index(
+                        session=session,
+                        chunk_start_ms=chunk_start_ms,
+                        chunk_end_ms=chunk_end_ms,
+                        seq=seq,
+                    )
+                    decode_blob = self.build_decode_window_blob(
+                        session=session,
+                        chunk_start_ms=chunk_start_ms,
+                        chunk_end_ms=chunk_end_ms,
+                        seq=seq,
+                    )
 
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(
-                    None,
-                    self._transcribe_callable,
-                    model_dir,
-                    tmp_path,
-                    device,
-                )
+                    try:
+                        result = await self._transcribe_blob(blob=decode_blob, model_dir=model_dir, device=device)
+                    except Exception as exc:
+                        if decode_window_start_index > 0 and self._is_soft_chunk_decode_error(exc):
+                            # Some bounded WebM windows are not independently decodable even
+                            # with the original header prefix. Retry once against the full
+                            # accumulated recording to preserve live continuity.
+                            decode_window_start_index = 0
+                            result = await self._transcribe_blob(
+                                blob=b''.join(session.accumulated_chunks),
+                                model_dir=model_dir,
+                                device=device,
+                            )
+                        else:
+                            raise
 
-                new_words, new_segments, new_language, new_duration = self._normalize_full_result(result)
+                    new_words, _new_segments, new_language, new_duration = self._normalize_full_result(result)
 
-                session.words = new_words
-                session.segments = new_segments
-                session.interim_text = ''
-                session.last_seq = seq
-                session.language = new_language
-                session.duration = max(new_duration, float(chunk_end_ms) / 1000.0)
-                if is_last:
-                    session.state = 'finalizing'
+                    decode_window_start_ms = 0
+                    if decode_window_start_index < len(session.accumulated_chunk_ranges_ms):
+                        decode_window_start_ms = session.accumulated_chunk_ranges_ms[decode_window_start_index][0]
+                    decode_window_start_s = float(decode_window_start_ms) / 1000.0
+                    shifted_words = self._shift_words(new_words, decode_window_start_s)
 
-                elapsed_ms = int((time.perf_counter() - started) * 1000)
-                session.chunk_latency_ms_samples.append(elapsed_ms)
+                    if shifted_words:
+                        if decode_window_start_index == 0:
+                            session.words = shifted_words
+                        else:
+                            replace_from_s = float(shifted_words[0].get('start', decode_window_start_s))
+                            session.words = self._merge_words(
+                                session.words,
+                                shifted_words,
+                                replace_from_s=replace_from_s,
+                            )
 
-                emitted_at = time.perf_counter()
-                if session.first_result_emitted_at is None:
-                    session.first_result_emitted_at = emitted_at
-                    if session.first_chunk_received_at is not None:
-                        session.ttft_ms = int((emitted_at - session.first_chunk_received_at) * 1000)
-
-                update_gap_ms: int | None = None
-                if session.last_result_emitted_at is not None:
-                    update_gap_ms = int((emitted_at - session.last_result_emitted_at) * 1000)
-                    session.update_gap_ms_samples.append(update_gap_ms)
-                session.last_result_emitted_at = emitted_at
-
-                session.warning = None
-                session.error = None
-
-                return {
-                    'sessionId': session.id,
-                    'seq': seq,
-                    'state': session.state if not is_last else 'finalizing',
-                    'interimText': session.interim_text,
-                    'finalized': {
-                        # Full snapshot each tick; cumulative decode can re-segment prior words.
-                        'words': session.words,
-                        'segments': session.segments,
-                    },
-                    'metrics': {
-                        'serverLatencyMs': elapsed_ms,
-                        'timeToFirstTokenMs': session.ttft_ms,
-                        'queueDepth': session.queue_depth,
-                        'updateGapMs': update_gap_ms,
-                        'speedMode': session.speed_mode,
-                    },
-                }
-            except Exception as exc:
-                # Soft-fail for known small/partial WebM decode errors and keep recording alive
-                if self._is_soft_chunk_decode_error(exc):
-                    session.warning = f'Live chunk processing warning: {exc}'
-                    session.error = None
+                    session.segments = self._rebuild_segments_from_words(session.words)
+                    session.interim_text = ''
                     session.last_seq = seq
+                    session.language = new_language
+                    session.duration = max(
+                        session.duration,
+                        new_duration + decode_window_start_s,
+                        float(chunk_end_ms) / 1000.0,
+                    )
+                    if is_last:
+                        session.state = 'finalizing'
+
                     elapsed_ms = int((time.perf_counter() - started) * 1000)
                     session.chunk_latency_ms_samples.append(elapsed_ms)
+
+                    emitted_at = time.perf_counter()
+                    if session.first_result_emitted_at is None:
+                        session.first_result_emitted_at = emitted_at
+                        if session.first_chunk_received_at is not None:
+                            session.ttft_ms = int((emitted_at - session.first_chunk_received_at) * 1000)
+
+                    update_gap_ms: int | None = None
+                    if session.last_result_emitted_at is not None:
+                        update_gap_ms = int((emitted_at - session.last_result_emitted_at) * 1000)
+                        session.update_gap_ms_samples.append(update_gap_ms)
+                    session.last_result_emitted_at = emitted_at
+
+                    session.warning = None
+                    session.error = None
+                    session.queue_depth = int(session.worker_busy) + session.waiting_requests
+
                     return {
                         'sessionId': session.id,
                         'seq': seq,
-                        'state': session.state,
+                        'state': session.state if not is_last else 'finalizing',
                         'interimText': session.interim_text,
                         'finalized': {
-                            'words': [],
-                            'segments': [],
+                            # Full committed snapshot each tick; bounded windows are merged back
+                            # into the cumulative session transcript before returning.
+                            'words': session.words,
+                            'segments': session.segments,
                         },
                         'metrics': {
                             'serverLatencyMs': elapsed_ms,
                             'timeToFirstTokenMs': session.ttft_ms,
                             'queueDepth': session.queue_depth,
-                            'updateGapMs': None,
+                            'workerBusy': session.worker_busy,
+                            'waitingRequests': session.waiting_requests,
+                            'updateGapMs': update_gap_ms,
                             'speedMode': session.speed_mode,
                         },
                     }
+                except Exception as exc:
+                    # Soft-fail for known small/partial WebM decode errors and keep recording alive
+                    if self._is_soft_chunk_decode_error(exc):
+                        session.warning = f'Live chunk processing warning: {exc}'
+                        session.error = None
+                        session.last_seq = seq
+                        elapsed_ms = int((time.perf_counter() - started) * 1000)
+                        session.chunk_latency_ms_samples.append(elapsed_ms)
+                        session.queue_depth = int(session.worker_busy) + session.waiting_requests
+                        return {
+                            'sessionId': session.id,
+                            'seq': seq,
+                            'state': session.state,
+                            'interimText': session.interim_text,
+                            'finalized': {
+                                'words': [],
+                                'segments': [],
+                            },
+                            'metrics': {
+                                'serverLatencyMs': elapsed_ms,
+                                'timeToFirstTokenMs': session.ttft_ms,
+                                'queueDepth': session.queue_depth,
+                                'workerBusy': session.worker_busy,
+                                'waitingRequests': session.waiting_requests,
+                                'updateGapMs': None,
+                                'speedMode': session.speed_mode,
+                            },
+                        }
 
-                session.warning = f'Live chunk processing error: {exc}'
-                session.error = str(exc)
-                raise
-            finally:
-                session.queue_depth = max(0, session.queue_depth - 1)
-                if tmp_path and tmp_path.exists():
-                    tmp_path.unlink(missing_ok=True)
+                    session.warning = f'Live chunk processing error: {exc}'
+                    session.error = str(exc)
+                    raise
+                finally:
+                    session.worker_busy = False
+                    session.queue_depth = int(session.worker_busy) + session.waiting_requests
+        finally:
+            if not lock_acquired:
+                session.waiting_requests = max(0, session.waiting_requests - 1)
+                session.queue_depth = int(session.worker_busy) + session.waiting_requests
 
     async def pause_session(self, session_id: str, at_ms: int) -> dict[str, Any]:
         session = await self._require_session(session_id)
@@ -372,6 +501,7 @@ class LiveTranscriptionManager:
     async def status(self, session_id: str) -> dict[str, Any]:
         session = await self._require_session(session_id)
         last_chunk_latency_ms = session.chunk_latency_ms_samples[-1] if session.chunk_latency_ms_samples else None
+        session.queue_depth = int(session.worker_busy) + session.waiting_requests
         return {
             'sessionId': session.id,
             'state': session.state,
@@ -389,6 +519,8 @@ class LiveTranscriptionManager:
                 'observed': {
                     'ttftMs': session.ttft_ms,
                     'lastChunkLatencyMs': last_chunk_latency_ms,
+                    'workerBusy': session.worker_busy,
+                    'waitingRequests': session.waiting_requests,
                 },
                 'targets.ttftP50Ms': TTFT_P50_TARGET_MS,
                 'targets.ttftP95Ms': TTFT_P95_TARGET_MS,
