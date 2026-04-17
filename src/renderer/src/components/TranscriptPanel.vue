@@ -21,17 +21,44 @@
       >{{ sessionStore.sessionName || 'Untitled session' }}</h2>
     </div>
 
-    <!-- Empty state — unchanged from Phase 2 -->
+    <!-- Empty state — live-first workflow -->
     <div v-if="transcriptStore.transcriptState === 'empty'" class="transcript-panel__empty">
-      <p>Record audio and click <strong>Transcribe</strong> to see the transcript here.</p>
+      <p>Start recording to see live transcript text appear here.</p>
     </div>
 
-    <!-- Transcribing — unchanged from Phase 2 -->
-    <div v-else-if="transcriptStore.isTranscribing" class="transcript-panel__progress">
+    <!-- Live transcription (Phase 33) -->
+    <div v-else-if="transcriptStore.transcriptState === 'live'" class="transcript-panel__content">
+      <div class="transcript-panel__meta">
+        <span>Live transcription active…</span>
+        <span>{{ transcriptStore.words.length }} words</span>
+      </div>
+      <p class="transcript-panel__text">{{ transcriptStore.fullText }}</p>
+      <p v-if="transcriptStore.interimText" class="transcript-panel__interim">
+        {{ transcriptStore.interimText }}
+      </p>
+      <p class="transcript-panel__progress-hint">Interim text may change until finalized.</p>
+      <p class="transcript-panel__progress-hint">Natural-feel targets: first text p95 ≤ 1.5s, updates p50 ≤ 0.6s.</p>
+      <p v-if="transcriptStore.liveWarning" class="transcript-panel__warning">
+        {{ transcriptStore.liveWarning }}
+      </p>
+    </div>
+
+    <!-- Finalizing live transcript -->
+    <div v-else-if="transcriptStore.transcriptState === 'finalizing'" class="transcript-panel__content">
+      <div class="transcript-panel__meta">
+        <span>Finalizing transcript…</span>
+        <span>{{ transcriptStore.words.length }} words</span>
+      </div>
+      <p class="transcript-panel__text">{{ transcriptStore.fullText }}</p>
+      <p class="transcript-panel__progress-hint">Committing remaining live chunks.</p>
+    </div>
+
+    <!-- Batch transcribing fallback -->
+    <div v-else-if="transcriptStore.transcriptState === 'transcribing'" class="transcript-panel__progress">
       <div class="transcript-panel__spinner" />
-      <p class="transcript-panel__progress-label">Transcribing with NVIDIA Parakeet…</p>
+      <p class="transcript-panel__progress-label">Recovering transcript from recorded audio…</p>
       <p class="transcript-panel__progress-hint">
-        This may take a few minutes depending on recording length and hardware.
+        Live transcription had to fall back to full audio recovery; this can take a few minutes on longer recordings.
       </p>
     </div>
 
@@ -63,7 +90,7 @@
 
       <!-- Word spans: click-to-seek, shift+click selection, underline, badges, drop targets -->
       <p class="transcript-panel__text">
-        <template v-for="word in transcriptStore.words" :key="word.id">
+        <template v-for="(word, idx) in transcriptStore.words" :key="word.id">
           <span
             class="word-span"
             :class="{
@@ -78,7 +105,7 @@
             @dragover.prevent="dragOverWordIndex = word.id"
             @dragleave="dragOverWordIndex = null"
             @drop="handleDrop($event, word.id)"
-          >{{ word.word.trimEnd() }}</span>
+          >{{ formatDisplayWord(word.word, idx) }}</span>
           <!-- Superscript badge after the LAST word of an annotated range (D-04) -->
           <sup
             v-if="annotationStore.badgeAtWord(word.id) !== null"
@@ -197,6 +224,11 @@ function handleDrop(event: DragEvent, wordIdx: number): void {
   annotationStore.moveAnnotation(annotationId, wordIdx)
 }
 
+function formatDisplayWord(raw: string, _idx: number): string {
+  // Backend now normalizes spacing in `word`; render as-is.
+  return String(raw ?? '')
+}
+
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
@@ -303,6 +335,14 @@ defineExpose({ panelEl })
 .transcript-panel__progress-hint {
   font-size: 0.82rem;
   color: var(--text-de);
+}
+.transcript-panel__interim {
+  font-style: italic;
+  color: var(--text);
+}
+.transcript-panel__warning {
+  color: #b58900;
+  font-size: 0.82rem;
 }
 
 /* ---- Error state ---- */
