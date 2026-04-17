@@ -20,6 +20,11 @@ LIVE_SPEED_MODE_SAFE_AUTO = 'safe_auto'
 LIVE_SPEED_MODE_AGGRESSIVE_INTERNAL = 'aggressive_internal'
 LIVE_SPEED_MODE_ENV_VAR = 'AMANUENSIS_LIVE_SPEED_MODE'
 
+SAFE_AUTO_MAX_WINDOW_MS = 6000
+AGGRESSIVE_MAX_WINDOW_MS = 2500
+WINDOW_OVERLAP_MS = 200
+FULL_RECONCILE_EVERY_N_CHUNKS = 8
+
 
 def resolve_live_speed_mode() -> str:
     configured = (os.getenv(LIVE_SPEED_MODE_ENV_VAR) or '').strip().lower()
@@ -163,6 +168,27 @@ class LiveTranscriptionManager:
         duration = float(result.get('duration', 0.0) or 0.0)
         return words, segments, language, duration
 
+    def build_decode_window_blob(
+        self,
+        *,
+        session: LiveSession,
+        chunk_start_ms: int,
+        chunk_end_ms: int,
+        seq: int,
+    ) -> bytes:
+        if seq % FULL_RECONCILE_EVERY_N_CHUNKS == 0:
+            return b''.join(session.accumulated_chunks)
+
+        max_window_ms = (
+            SAFE_AUTO_MAX_WINDOW_MS
+            if session.speed_mode == LIVE_SPEED_MODE_SAFE_AUTO
+            else AGGRESSIVE_MAX_WINDOW_MS
+        )
+        chunk_span_ms = max(1, chunk_end_ms - chunk_start_ms)
+        window_span_ms = max_window_ms + WINDOW_OVERLAP_MS
+        window_chunk_count = max(1, int(window_span_ms / chunk_span_ms))
+        return b''.join(session.accumulated_chunks[-window_chunk_count:])
+
     async def ingest_chunk(
         self,
         *,
@@ -192,10 +218,14 @@ class LiveTranscriptionManager:
             try:
                 session.accumulated_chunks.append(audio_bytes)
 
-                # Decode cumulative stream (contains the initial WebM header from first chunk)
-                cumulative_blob = b''.join(session.accumulated_chunks)
+                decode_blob = self.build_decode_window_blob(
+                    session=session,
+                    chunk_start_ms=chunk_start_ms,
+                    chunk_end_ms=chunk_end_ms,
+                    seq=seq,
+                )
                 with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
-                    tmp.write(cumulative_blob)
+                    tmp.write(decode_blob)
                     tmp_path = Path(tmp.name)
 
                 loop = asyncio.get_event_loop()
@@ -251,6 +281,7 @@ class LiveTranscriptionManager:
                         'timeToFirstTokenMs': session.ttft_ms,
                         'queueDepth': session.queue_depth,
                         'updateGapMs': update_gap_ms,
+                        'speedMode': session.speed_mode,
                     },
                 }
             except Exception as exc:
@@ -275,6 +306,7 @@ class LiveTranscriptionManager:
                             'timeToFirstTokenMs': session.ttft_ms,
                             'queueDepth': session.queue_depth,
                             'updateGapMs': None,
+                            'speedMode': session.speed_mode,
                         },
                     }
 

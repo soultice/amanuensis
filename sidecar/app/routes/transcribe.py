@@ -13,7 +13,7 @@ from app.services.live_transcription import (
     LiveTransitionError,
     resolve_live_speed_mode,
 )
-from app.services.transcription import transcribe_file
+from app.services.transcription import transcribe_file, warm_model_for_live
 
 router = APIRouter(prefix='/transcribe')
 
@@ -99,6 +99,25 @@ async def live_start(req: LiveStartRequest):
         mime_type=req.mimeType,
     )
     result.setdefault('speedMode', resolve_live_speed_mode())
+
+    warnings: list[str] = []
+    if result.get('warning'):
+        warnings.append(str(result['warning']))
+
+    try:
+        if state.model_manager is not None and state.model_manager.state == 'present':
+            warmup = warm_model_for_live(
+                state.model_manager.get_model_path(),
+                device=state.transcription_device,
+            )
+            defaults = result.setdefault('defaults', {})
+            defaults['warmupMs'] = warmup.get('warmupMs')
+    except Exception as exc:
+        warnings.append(f'Live warmup warning: {exc}')
+
+    if warnings:
+        result['warning'] = ' | '.join(warnings)
+
     return JSONResponse(result)
 
 

@@ -6,12 +6,33 @@ from __future__ import annotations
 
 import subprocess
 import threading
+import time
 import wave
 from pathlib import Path
 from typing import Any, Optional
 
 _model: Optional[Any] = None
 _model_lock = threading.Lock()
+
+
+def _is_punctuation_token(token: str) -> bool:
+    return bool(token) and all(ch in ".,!?;:" for ch in token)
+
+
+def _apply_word_spacing(words: list[dict]) -> list[dict]:
+    """Normalize word text so join('') keeps readable spacing."""
+    for idx, word in enumerate(words):
+        token = str(word.get("word", "")).strip()
+        if not token:
+            word["word"] = ""
+            continue
+
+        if idx == 0 or _is_punctuation_token(token):
+            word["word"] = token
+        else:
+            word["word"] = f" {token}"
+
+    return words
 
 
 def _resolve_ffmpeg_binary() -> str:
@@ -46,17 +67,45 @@ def _convert_to_wav(audio_path: Path) -> Path:
 
 
 def _tokens_to_words(tokens: list[str], timestamps: list[float], segment_id: int, word_id_start: int) -> list[dict]:
-    """Aggregate SentencePiece token timestamps to word-level timestamps."""
+    """Aggregate token timestamps to word-level timestamps.
+
+    Supports both SentencePiece-style tokens (▁word) and BPE-style tokens where
+    a leading space marks a new word (e.g. " A", "ch", ",", " keine").
+    """
     words: list[dict] = []
-    current_word = ""
-    current_start: Optional[float] = None
     word_id = word_id_start
 
-    for idx, (token, ts) in enumerate(zip(tokens, timestamps)):
-        normalized = token.strip()
-        starts_new_word = normalized.startswith("▁") or not current_word
+    if not tokens:
+        return words
 
-        if starts_new_word and current_word:
+    current_word = ""
+    current_start: Optional[float] = None
+
+    for token, ts in zip(tokens, timestamps):
+        raw = str(token)
+        stripped = raw.strip()
+        if not stripped:
+            continue
+
+        is_punctuation = _is_punctuation_token(stripped)
+        starts_new_word = raw.startswith(" ") or stripped.startswith("▁")
+
+        if is_punctuation:
+            if current_word:
+                current_word += stripped
+            elif words:
+                words[-1]["word"] = f"{words[-1]['word']}{stripped}"
+                words[-1]["end"] = round(float(ts), 3)
+            continue
+
+        clean = stripped.replace("▁", "", 1).strip() if stripped.startswith("▁") else stripped
+
+        if not current_word:
+            current_word = clean
+            current_start = float(ts)
+            continue
+
+        if starts_new_word:
             words.append(
                 {
                     "id": word_id,
@@ -68,13 +117,10 @@ def _tokens_to_words(tokens: list[str], timestamps: list[float], segment_id: int
                 }
             )
             word_id += 1
-
-        if starts_new_word:
-            clean = normalized.replace("▁", "", 1).strip()
             current_word = clean
             current_start = float(ts)
         else:
-            current_word += normalized
+            current_word += clean
 
     if current_word and current_start is not None:
         end_ts = float(timestamps[-1]) + 0.1 if timestamps else float(current_start) + 0.1
@@ -89,7 +135,7 @@ def _tokens_to_words(tokens: list[str], timestamps: list[float], segment_id: int
             }
         )
 
-    return words
+    return _apply_word_spacing(words)
 
 
 def _providers_for_device(device: str) -> list[str]:
@@ -116,6 +162,12 @@ def get_model(model_dir: Path, device: str = "auto") -> Any:
                     loaded = loaded.with_timestamps()
                 _model = loaded
     return _model
+
+
+def warm_model_for_live(model_dir: Path, device: str = 'auto') -> dict[str, float]:
+    started = time.perf_counter()
+    get_model(model_dir, device=device)
+    return {'warmupMs': round((time.perf_counter() - started) * 1000, 2)}
 
 
 def transcribe_file(model_dir: Path, audio_path: Path, device: str = "auto") -> dict:
