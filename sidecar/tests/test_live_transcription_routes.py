@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import asyncio
+import threading
+import time
 
 from fastapi.testclient import TestClient
 
@@ -141,6 +144,99 @@ def test_live_status_reports_latency_targets() -> None:
     assert payload['metrics']['targets']['ttftP95Ms'] == 1500
     assert payload['metrics']['targets']['updateCadenceP50Ms'] == 600
     assert payload['metrics']['targets']['queueDepthP95'] == 1
+
+
+def test_live_status_reports_worker_busy_and_waiting_requests() -> None:
+    app = create_app('/tmp/amanuensis-test', device='cpu')
+    state.model_manager = _FakeModelManager()
+
+    release_first_chunk = threading.Event()
+    first_chunk_started = threading.Event()
+
+    def _blocking_transcribe(_model_dir: Path, _audio_path: Path, _device: str) -> dict:
+        first_chunk_started.set()
+        release_first_chunk.wait(timeout=5)
+        return _fake_transcribe(_model_dir, _audio_path, _device)
+
+    assert state.live_transcription_manager is not None
+    state.live_transcription_manager._transcribe_callable = _blocking_transcribe
+
+    status_client = TestClient(app)
+    first_chunk_client = TestClient(app)
+
+    start = status_client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
+    assert start.status_code == 200
+    session_id = start.json()['sessionId']
+
+    results: dict[str, object] = {}
+
+    def _post_chunk(name: str, seq: int, client: TestClient) -> None:
+        try:
+            response = client.post(
+                '/transcribe/live/chunk',
+                data={
+                    'sessionId': session_id,
+                    'seq': str(seq),
+                    'chunkStartMs': str((seq - 1) * 500),
+                    'chunkEndMs': str(seq * 500),
+                    'isLast': 'false',
+                },
+                files={'audio': (f'chunk-{seq}.webm', b'abc', 'audio/webm')},
+            )
+            results[name] = response
+        except Exception as exc:  # pragma: no cover - defensive path
+            results[name] = exc
+
+    def _ingest_chunk(name: str, seq: int) -> None:
+        async def _run() -> dict:
+            assert state.live_transcription_manager is not None
+            return await state.live_transcription_manager.ingest_chunk(
+                session_id=session_id,
+                seq=seq,
+                chunk_start_ms=(seq - 1) * 500,
+                chunk_end_ms=seq * 500,
+                audio_bytes=b'abc',
+                model_dir=Path('.'),
+                device='cpu',
+                is_last=False,
+            )
+
+        try:
+            results[name] = asyncio.run(_run())
+        except Exception as exc:  # pragma: no cover - defensive path
+            results[name] = exc
+
+    first_thread = threading.Thread(target=_post_chunk, args=('first', 1, first_chunk_client), daemon=True)
+    second_thread = threading.Thread(target=_ingest_chunk, args=('second', 2), daemon=True)
+
+    first_thread.start()
+    assert first_chunk_started.wait(timeout=2), 'first chunk did not enter transcribe callback'
+
+    second_thread.start()
+
+    payload = None
+    for _ in range(30):
+        status = status_client.get('/transcribe/live/status', params={'sessionId': session_id})
+        assert status.status_code == 200
+        candidate = status.json()
+        if candidate['metrics']['observed']['workerBusy'] and candidate['metrics']['observed']['waitingRequests'] >= 1:
+            payload = candidate
+            break
+        time.sleep(0.05)
+
+    assert payload is not None, 'live status never reported worker busy + waiting backlog'
+    assert payload['metrics']['observed']['workerBusy'] is True
+    assert payload['metrics']['observed']['waitingRequests'] >= 1
+    assert payload['queueDepth'] >= 1
+
+    release_first_chunk.set()
+
+    first_thread.join(timeout=5)
+    second_thread.join(timeout=5)
+
+    assert not first_thread.is_alive()
+    assert 'first' in results
+    assert getattr(results['first'], 'status_code', 500) == 200
 
 
 def test_live_speed_mode_defaults_to_safe_auto(monkeypatch) -> None:
