@@ -1,10 +1,10 @@
-# Phase 33: "transcription should be live from now on" - Discussion Log
+# Phase 19: "transcription should be live from now on" - Discussion Log
 
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in CONTEXT.md - this log preserves the alternatives considered.
 
 **Date:** 2026-04-16
-**Phase:** 33-transcription-should-be-live-from-now-on
+**Phase:** 19-transcription-should-be-live-from-now-on
 **Areas discussed:** Live update cadence, Interim/final text behavior, Timestamp finalization policy, Recording control interaction, Failure fallback behavior
 
 ---

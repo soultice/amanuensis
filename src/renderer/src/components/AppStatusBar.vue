@@ -12,6 +12,9 @@
     <span v-if="showLiveTelemetry" class="status-bar__item status-bar__telemetry">
       Pipeline: Worker {{ transcriptStore.liveWorkerBusy ? 'Busy' : 'Idle' }} · Waiting {{ transcriptStore.liveWaitingRequests }}
     </span>
+    <span v-if="showLiveTelemetry" class="status-bar__item status-bar__telemetry">
+      Producer: {{ recordingStore.liveUploadInFlight ? 'Upload busy' : 'Upload idle' }} · Buffer {{ recordingStore.liveBufferedMs }}ms / {{ recordingStore.liveBufferedBytes }}B
+    </span>
     <span v-if="transcriptStore.liveWarning" class="status-bar__warning">
       Live transcription failed — recording continues
     </span>
@@ -22,8 +25,10 @@
 import { computed } from 'vue'
 import { useSidecarStore } from '../stores/sidecar'
 import { useTranscriptStore } from '../stores/transcript'
+import { useRecordingStore } from '../stores/recording'
 const sidecarStore = useSidecarStore()
 const transcriptStore = useTranscriptStore()
+const recordingStore = useRecordingStore()
 
 const showLiveTelemetry = computed(
   () => transcriptStore.transcriptState === 'live' || transcriptStore.transcriptState === 'finalizing',

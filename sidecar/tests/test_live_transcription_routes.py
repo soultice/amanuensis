@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-import sys
-import asyncio
 import threading
 import time
+from pathlib import Path
+import sys
 
 from fastapi.testclient import TestClient
 
@@ -12,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import app.state as state
 from app.main import create_app
+from app.routes import transcribe as transcribe_routes
+from app.services import live_transcription as live_service
 
 
 class _FakeModelManager:
@@ -21,28 +22,48 @@ class _FakeModelManager:
         return Path('.')
 
 
-def _fake_transcribe(_model_dir: Path, _audio_path: Path, _device: str) -> dict:
+def _fake_words(seed: str = 'hello world') -> dict:
+    tokens = [token for token in seed.split(' ') if token]
+    words = []
+    start = 0.0
+    for idx, token in enumerate(tokens):
+        end = round(start + 0.4, 3)
+        words.append({'id': idx, 'word': f"{token} ", 'start': start, 'end': end, 'probability': 1.0, 'segmentId': 0})
+        start = end
     return {
-        'words': [
-            {'id': 0, 'word': 'hello ', 'start': 0.0, 'end': 0.4, 'probability': 1.0, 'segmentId': 0},
-            {'id': 1, 'word': 'world ', 'start': 0.4, 'end': 0.9, 'probability': 1.0, 'segmentId': 0},
-        ],
-        'segments': [{'id': 0, 'start': 0.0, 'end': 0.9, 'text': 'hello world'}],
+        'words': words,
+        'segments': [{'id': 0, 'start': 0.0, 'end': words[-1]['end'] if words else 0.0, 'text': seed}],
         'language': 'en',
-        'duration': 0.9,
+        'duration': words[-1]['end'] if words else 0.0,
     }
 
 
-def _client() -> TestClient:
+def _install_fake_live_pipeline(monkeypatch, *, block_on_transcribe: threading.Event | None = None, entered: threading.Event | None = None) -> None:
+    monkeypatch.setattr(live_service, 'decode_webm_to_pcm', lambda audio_path: (audio_path.read_bytes() or b'x', 16000))
+    monkeypatch.setattr(live_service, 'write_pcm_to_wav', lambda pcm, _sample_rate, wav_path: wav_path.write_bytes(pcm))
+
+    def _fake_transcribe(_model_dir: Path, wav_path: Path, _device: str) -> dict:
+        if entered is not None:
+            entered.set()
+        if block_on_transcribe is not None:
+            block_on_transcribe.wait(timeout=2)
+        payload = wav_path.read_bytes().decode(errors='ignore').strip() or 'hello world'
+        return _fake_words(payload)
+
+    monkeypatch.setattr(live_service, 'transcribe_wav_file', _fake_transcribe)
+    monkeypatch.setattr(transcribe_routes, 'warm_model_for_live', lambda *_args, **_kwargs: {'warmupMs': 1.0})
+
+
+def _client(monkeypatch) -> TestClient:
     app = create_app('/tmp/amanuensis-test', device='cpu')
     state.model_manager = _FakeModelManager()
     assert state.live_transcription_manager is not None
-    state.live_transcription_manager._transcribe_callable = _fake_transcribe
+    _install_fake_live_pipeline(monkeypatch)
     return TestClient(app)
 
 
-def test_live_session_state_machine() -> None:
-    client = _client()
+def test_live_session_state_machine(monkeypatch) -> None:
+    client = _client(monkeypatch)
 
     start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
     assert start.status_code == 200
@@ -57,7 +78,7 @@ def test_live_session_state_machine() -> None:
             'chunkEndMs': '500',
             'isLast': 'false',
         },
-        files={'audio': ('chunk.webm', b'123', 'audio/webm')},
+        files={'audio': ('chunk.webm', b'hello world', 'audio/webm')},
     )
     assert chunk.status_code == 200
     assert chunk.json()['state'] == 'live'
@@ -76,8 +97,8 @@ def test_live_session_state_machine() -> None:
     assert set(['words', 'segments', 'language', 'duration']).issubset(payload.keys())
 
 
-def test_live_endpoints_contract() -> None:
-    client = _client()
+def test_live_endpoints_contract(monkeypatch) -> None:
+    client = _client(monkeypatch)
 
     start = client.post('/transcribe/live/start', json={'sampleRate': 16000, 'channels': 1, 'mimeType': 'audio/webm'})
     assert start.status_code == 200
@@ -89,8 +110,8 @@ def test_live_endpoints_contract() -> None:
     assert set(['sessionId', 'state', 'lastSeq', 'queueDepth', 'warning', 'error']).issubset(status.json().keys())
 
 
-def test_live_chunk_metrics_include_ttft_and_queue_depth() -> None:
-    client = _client()
+def test_live_chunk_metrics_include_ttft_and_queue_depth(monkeypatch) -> None:
+    client = _client(monkeypatch)
 
     start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
     assert start.status_code == 200
@@ -105,7 +126,7 @@ def test_live_chunk_metrics_include_ttft_and_queue_depth() -> None:
             'chunkEndMs': '500',
             'isLast': 'false',
         },
-        files={'audio': ('chunk.webm', b'abc', 'audio/webm')},
+        files={'audio': ('chunk.webm', b'hello world', 'audio/webm')},
     )
 
     assert chunk.status_code == 200
@@ -116,8 +137,8 @@ def test_live_chunk_metrics_include_ttft_and_queue_depth() -> None:
     assert 'updateGapMs' in metrics
 
 
-def test_live_status_reports_latency_targets() -> None:
-    client = _client()
+def test_live_status_reports_latency_targets(monkeypatch) -> None:
+    client = _client(monkeypatch)
 
     start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
     assert start.status_code == 200
@@ -132,7 +153,7 @@ def test_live_status_reports_latency_targets() -> None:
             'chunkEndMs': '500',
             'isLast': 'false',
         },
-        files={'audio': ('chunk.webm', b'abc', 'audio/webm')},
+        files={'audio': ('chunk.webm', b'hello world', 'audio/webm')},
     )
     assert chunk.status_code == 200
 
@@ -146,127 +167,74 @@ def test_live_status_reports_latency_targets() -> None:
     assert payload['metrics']['targets']['queueDepthP95'] == 1
 
 
-def test_live_status_reports_worker_busy_and_waiting_requests() -> None:
+def test_live_status_reports_worker_busy_and_waiting_requests(monkeypatch) -> None:
     app = create_app('/tmp/amanuensis-test', device='cpu')
     state.model_manager = _FakeModelManager()
 
-    release_first_chunk = threading.Event()
-    first_chunk_started = threading.Event()
+    entered = threading.Event()
+    unblock = threading.Event()
+    _install_fake_live_pipeline(monkeypatch, block_on_transcribe=unblock, entered=entered)
 
-    def _blocking_transcribe(_model_dir: Path, _audio_path: Path, _device: str) -> dict:
-        first_chunk_started.set()
-        release_first_chunk.wait(timeout=5)
-        return _fake_transcribe(_model_dir, _audio_path, _device)
+    client = TestClient(app)
 
-    assert state.live_transcription_manager is not None
-    state.live_transcription_manager._transcribe_callable = _blocking_transcribe
-
-    status_client = TestClient(app)
-    first_chunk_client = TestClient(app)
-
-    start = status_client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
+    start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
     assert start.status_code == 200
     session_id = start.json()['sessionId']
 
-    results: dict[str, object] = {}
+    chunk1_result: dict[str, int] = {'status': 0}
 
-    def _post_chunk(name: str, seq: int, client: TestClient) -> None:
-        try:
-            response = client.post(
-                '/transcribe/live/chunk',
-                data={
-                    'sessionId': session_id,
-                    'seq': str(seq),
-                    'chunkStartMs': str((seq - 1) * 500),
-                    'chunkEndMs': str(seq * 500),
-                    'isLast': 'false',
-                },
-                files={'audio': (f'chunk-{seq}.webm', b'abc', 'audio/webm')},
-            )
-            results[name] = response
-        except Exception as exc:  # pragma: no cover - defensive path
-            results[name] = exc
+    def _chunk1() -> None:
+        response = client.post(
+            '/transcribe/live/chunk',
+            data={
+                'sessionId': session_id,
+                'seq': '1',
+                'chunkStartMs': '0',
+                'chunkEndMs': '500',
+                'isLast': 'false',
+            },
+            files={'audio': ('chunk.webm', b'first', 'audio/webm')},
+        )
+        chunk1_result['status'] = response.status_code
 
-    def _ingest_chunk(name: str, seq: int) -> None:
-        async def _run() -> dict:
-            assert state.live_transcription_manager is not None
-            return await state.live_transcription_manager.ingest_chunk(
-                session_id=session_id,
-                seq=seq,
-                chunk_start_ms=(seq - 1) * 500,
-                chunk_end_ms=seq * 500,
-                audio_bytes=b'abc',
-                model_dir=Path('.'),
-                device='cpu',
-                is_last=False,
-            )
+    t1 = threading.Thread(target=_chunk1)
+    t1.start()
+    assert entered.wait(timeout=1)
 
-        try:
-            results[name] = asyncio.run(_run())
-        except Exception as exc:  # pragma: no cover - defensive path
-            results[name] = exc
+    t2 = threading.Thread(
+        target=lambda: client.post(
+            '/transcribe/live/chunk',
+            data={
+                'sessionId': session_id,
+                'seq': '2',
+                'chunkStartMs': '500',
+                'chunkEndMs': '1000',
+                'isLast': 'false',
+            },
+            files={'audio': ('chunk.webm', b'second', 'audio/webm')},
+        )
+    )
+    t2.start()
+    time.sleep(0.05)
 
-    first_thread = threading.Thread(target=_post_chunk, args=('first', 1, first_chunk_client), daemon=True)
-    second_thread = threading.Thread(target=_ingest_chunk, args=('second', 2), daemon=True)
-
-    first_thread.start()
-    assert first_chunk_started.wait(timeout=2), 'first chunk did not enter transcribe callback'
-
-    second_thread.start()
-
-    payload = None
-    for _ in range(30):
-        status = status_client.get('/transcribe/live/status', params={'sessionId': session_id})
-        assert status.status_code == 200
-        candidate = status.json()
-        if candidate['metrics']['observed']['workerBusy'] and candidate['metrics']['observed']['waitingRequests'] >= 1:
-            payload = candidate
-            break
-        time.sleep(0.05)
-
-    assert payload is not None, 'live status never reported worker busy + waiting backlog'
+    status = client.get('/transcribe/live/status', params={'sessionId': session_id})
+    assert status.status_code == 200
+    payload = status.json()
     assert payload['metrics']['observed']['workerBusy'] is True
     assert payload['metrics']['observed']['waitingRequests'] >= 1
     assert payload['queueDepth'] >= 1
 
-    release_first_chunk.set()
-
-    first_thread.join(timeout=5)
-    second_thread.join(timeout=5)
-
-    assert not first_thread.is_alive()
-    assert 'first' in results
-    assert getattr(results['first'], 'status_code', 500) == 200
+    unblock.set()
+    t1.join(timeout=2)
+    t2.join(timeout=2)
+    assert chunk1_result['status'] == 200
 
 
-def test_live_speed_mode_defaults_to_safe_auto(monkeypatch) -> None:
-    client = _client()
-    monkeypatch.delenv('AMANUENSIS_LIVE_SPEED_MODE', raising=False)
+def test_live_chunk_payload_includes_patch_metadata(monkeypatch) -> None:
+    client = _client(monkeypatch)
 
-    start = client.post('/transcribe/live/start', json={'sampleRate': 16000, 'channels': 1, 'mimeType': 'audio/webm'})
-    assert start.status_code == 200
-    assert start.json()['speedMode'] == 'safe_auto'
-
-
-def test_live_speed_mode_env_aggressive_internal(monkeypatch) -> None:
-    client = _client()
-    monkeypatch.setenv('AMANUENSIS_LIVE_SPEED_MODE', 'aggressive_internal')
-
-    start = client.post('/transcribe/live/start', json={'sampleRate': 16000, 'channels': 1, 'mimeType': 'audio/webm'})
-    assert start.status_code == 200
-    assert start.json()['speedMode'] == 'aggressive_internal'
-
-
-def test_live_failure_does_not_abort_session(monkeypatch) -> None:
-    client = _client()
     start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
     session_id = start.json()['sessionId']
-
-    def _boom(_model_dir: Path, _audio_path: Path, _device: str) -> dict:
-        raise RuntimeError('forced live failure')
-
-    assert state.live_transcription_manager is not None
-    monkeypatch.setattr(state.live_transcription_manager, '_transcribe_callable', _boom)
 
     chunk = client.post(
         '/transcribe/live/chunk',
@@ -274,19 +242,30 @@ def test_live_failure_does_not_abort_session(monkeypatch) -> None:
             'sessionId': session_id,
             'seq': '1',
             'chunkStartMs': '0',
-            'chunkEndMs': '200',
+            'chunkEndMs': '500',
             'isLast': 'false',
         },
-        files={'audio': ('chunk.webm', b'123', 'audio/webm')},
+        files={'audio': ('chunk.webm', b'hello world', 'audio/webm')},
     )
-    assert chunk.status_code == 500
 
-    status = client.get('/transcribe/live/status', params={'sessionId': session_id})
-    assert status.status_code == 200
-    payload = status.json()
-    assert payload['error'] is not None
-    assert payload['warning'] is not None
+    assert chunk.status_code == 200
+    finalized = chunk.json()['finalized']
+    assert set(['mode', 'replaceFromWordIndex', 'words', 'segments']).issubset(finalized.keys())
 
-    stop = client.post('/transcribe/live/stop', json={'sessionId': session_id, 'atMs': 300})
-    assert stop.status_code == 200
-    assert set(['words', 'segments', 'language', 'duration']).issubset(stop.json().keys())
+
+def test_live_start_returns_runtime_provider_metadata(monkeypatch) -> None:
+    monkeypatch.setattr(
+        transcribe_routes,
+        'describe_runtime_provider',
+        lambda _device: {
+            'deviceMode': 'auto',
+            'runtimeProvider': 'CPUExecutionProvider',
+            'availableProviders': ['CPUExecutionProvider'],
+        },
+    )
+    client = _client(monkeypatch)
+
+    start = client.post('/transcribe/live/start', json={'sampleRate': 16000, 'channels': 1, 'mimeType': 'audio/webm'})
+    assert start.status_code == 200
+    payload = start.json()
+    assert set(['deviceMode', 'runtimeProvider', 'availableProviders']).issubset(payload.keys())

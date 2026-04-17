@@ -6,7 +6,7 @@
       <button
         class="export-btn copy-btn"
         :disabled="!transcriptStore.hasTranscript"
-        :title="transcriptStore.hasTranscript ? 'Copy transcript text to clipboard' : 'Transcribe first to enable copy'"
+        :title="transcriptStore.hasTranscript ? 'Copy transcript text to clipboard' : 'Complete a transcript to enable copy'"
         @click="copyTranscriptText"
       >
         {{ copied ? '✓ Copied' : '⎘ Copy' }}
@@ -14,7 +14,7 @@
       <button
         class="export-btn"
         :disabled="!transcriptStore.hasTranscript"
-        :title="transcriptStore.hasTranscript ? 'Export transcript as Markdown' : 'Transcribe first to enable export'"
+        :title="transcriptStore.hasTranscript ? 'Export transcript as Markdown' : 'Complete a transcript to enable export'"
         @click="exportMarkdown"
       >
         ↓ Export .md

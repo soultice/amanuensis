@@ -1,4 +1,4 @@
-<gsd-version v="2.1.1" do-not-update />
+<gsd-version v="2.1.1" />
 
 <gsd-arguments>
   <settings>
@@ -21,7 +21,7 @@
         <args>
           <arg string="init" />
           <arg string="verify-work" />
-          <arg name="phase" />
+          <arg name="phase" wrap='"' />
         </args>
         <outs>
           <out type="string" name="init" />

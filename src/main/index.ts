@@ -394,6 +394,12 @@ ipcMain.handle('session:getAssetsDir', async (_event, sessionId: string) => {
   return assetsDir
 })
 
+ipcMain.handle('session:readSessionAsset', async (_event, sessionId: string, filename: string) => {
+  const assetPath = join(app.getPath('userData'), 'sessions', sessionId, 'assets', filename)
+  const buffer = await fsPromises.readFile(assetPath)
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+})
+
 // ---- Session persistence (Phase 8 — multi-session) ----
 
 ipcMain.handle('session:list', async () => {

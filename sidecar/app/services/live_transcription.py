@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+from app.services.transcription import decode_webm_to_pcm, transcribe_wav_file, write_pcm_to_wav
 
 TTFT_P50_TARGET_MS = 800
 TTFT_P95_TARGET_MS = 1500
@@ -78,6 +79,9 @@ class LiveSession:
     boundaries: list[dict[str, Any]] = field(default_factory=list)
     accumulated_chunks: list[bytes] = field(default_factory=list)
     accumulated_chunk_ranges_ms: list[tuple[int, int]] = field(default_factory=list)
+    pcm_sample_rate: int = 16000
+    pcm_chunks: list[bytes] = field(default_factory=list)
+    pcm_chunk_ranges_ms: list[tuple[int, int]] = field(default_factory=list)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
@@ -216,12 +220,53 @@ class LiveTranscriptionManager:
         )
 
         tail = chunks[start_index:]
-        # MediaRecorder chunks after the first one usually do not contain the WebM
-        # EBML header. Keep the first chunk as a stable prefix when we window,
-        # otherwise ffmpeg intermittently fails with EBML header parse errors.
         if start_index > 0:
             return b''.join([chunks[0], *tail])
         return b''.join(tail)
+
+    def resolve_pcm_window_start_index(
+        self,
+        *,
+        session: LiveSession,
+        chunk_start_ms: int,
+        chunk_end_ms: int,
+        seq: int,
+    ) -> int:
+        chunks = session.pcm_chunks
+        if not chunks:
+            return 0
+
+        if seq % FULL_RECONCILE_EVERY_N_CHUNKS == 0:
+            return 0
+
+        max_window_ms = (
+            SAFE_AUTO_MAX_WINDOW_MS
+            if session.speed_mode == LIVE_SPEED_MODE_SAFE_AUTO
+            else AGGRESSIVE_MAX_WINDOW_MS
+        )
+        chunk_span_ms = max(1, chunk_end_ms - chunk_start_ms)
+        window_span_ms = max_window_ms + WINDOW_OVERLAP_MS
+        window_chunk_count = max(1, int(window_span_ms / chunk_span_ms))
+        return max(0, len(chunks) - window_chunk_count)
+
+    def build_pcm_window_blob(
+        self,
+        *,
+        session: LiveSession,
+        chunk_start_ms: int,
+        chunk_end_ms: int,
+        seq: int,
+    ) -> bytes:
+        if not session.pcm_chunks:
+            return b''
+
+        start_index = self.resolve_pcm_window_start_index(
+            session=session,
+            chunk_start_ms=chunk_start_ms,
+            chunk_end_ms=chunk_end_ms,
+            seq=seq,
+        )
+        return b''.join(session.pcm_chunks[start_index:])
 
     @staticmethod
     def _shift_words(words: list[dict[str, Any]], offset_s: float) -> list[dict[str, Any]]:
@@ -245,12 +290,12 @@ class LiveTranscriptionManager:
         window_words: list[dict[str, Any]],
         *,
         replace_from_s: float,
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[int, list[dict[str, Any]]]:
         prefix = [dict(word) for word in existing_words if float(word.get('end', 0.0)) <= replace_from_s]
         merged = prefix + [dict(word) for word in window_words]
         for idx, word in enumerate(merged):
             word['id'] = idx
-        return merged
+        return len(prefix), merged
 
     @staticmethod
     def _rebuild_segments_from_words(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -280,6 +325,23 @@ class LiveTranscriptionManager:
                 tmp_path,
                 device,
             )
+        finally:
+            if tmp_path and tmp_path.exists():
+                tmp_path.unlink(missing_ok=True)
+
+    async def _transcribe_pcm_window(self, *, model_dir: Path, wav_path: Path, device: str) -> dict[str, Any]:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, transcribe_wav_file, model_dir, wav_path, device)
+
+    async def _decode_blob_to_pcm(self, blob: bytes) -> tuple[bytes, int]:
+        tmp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
+                tmp.write(blob)
+                tmp_path = Path(tmp.name)
+
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, decode_webm_to_pcm, tmp_path)
         finally:
             if tmp_path and tmp_path.exists():
                 tmp_path.unlink(missing_ok=True)
@@ -314,53 +376,101 @@ class LiveTranscriptionManager:
                 started = time.perf_counter()
                 if session.first_chunk_received_at is None:
                     session.first_chunk_received_at = started
+
                 try:
                     session.accumulated_chunks.append(audio_bytes)
                     session.accumulated_chunk_ranges_ms.append((chunk_start_ms, chunk_end_ms))
 
-                    decode_window_start_index = self.resolve_decode_window_start_index(
+                    try:
+                        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as chunk_tmp:
+                            chunk_tmp.write(audio_bytes)
+                            chunk_path = Path(chunk_tmp.name)
+
+                        try:
+                            chunk_pcm, sample_rate = decode_webm_to_pcm(chunk_path)
+                        finally:
+                            chunk_path.unlink(missing_ok=True)
+
+                        session.pcm_sample_rate = sample_rate
+                        session.pcm_chunks.append(chunk_pcm)
+                        session.pcm_chunk_ranges_ms.append((chunk_start_ms, chunk_end_ms))
+                    except Exception as exc:
+                        if not self._is_soft_chunk_decode_error(exc):
+                            raise
+
+                        stitched_start_index = self.resolve_decode_window_start_index(
+                            session=session,
+                            chunk_start_ms=chunk_start_ms,
+                            chunk_end_ms=chunk_end_ms,
+                            seq=seq,
+                        )
+                        stitched_blob = self.build_decode_window_blob(
+                            session=session,
+                            chunk_start_ms=chunk_start_ms,
+                            chunk_end_ms=chunk_end_ms,
+                            seq=seq,
+                        )
+                        if not stitched_blob:
+                            raise
+
+                        stitched_pcm, sample_rate = await self._decode_blob_to_pcm(stitched_blob)
+                        stitched_start_ms = 0
+                        if stitched_start_index < len(session.accumulated_chunk_ranges_ms):
+                            stitched_start_ms = session.accumulated_chunk_ranges_ms[stitched_start_index][0]
+
+                        session.pcm_sample_rate = sample_rate
+                        session.pcm_chunks = [stitched_pcm]
+                        session.pcm_chunk_ranges_ms = [(stitched_start_ms, chunk_end_ms)]
+
+                    pcm_window_start_index = self.resolve_pcm_window_start_index(
                         session=session,
                         chunk_start_ms=chunk_start_ms,
                         chunk_end_ms=chunk_end_ms,
                         seq=seq,
                     )
-                    decode_blob = self.build_decode_window_blob(
+                    pcm_window_blob = self.build_pcm_window_blob(
                         session=session,
                         chunk_start_ms=chunk_start_ms,
                         chunk_end_ms=chunk_end_ms,
                         seq=seq,
                     )
 
+                    decode_window_start_ms = 0
+                    if pcm_window_start_index < len(session.pcm_chunk_ranges_ms):
+                        decode_window_start_ms = session.pcm_chunk_ranges_ms[pcm_window_start_index][0]
+                    decode_window_start_s = float(decode_window_start_ms) / 1000.0
+
+                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as wav_tmp:
+                        wav_path = Path(wav_tmp.name)
                     try:
-                        result = await self._transcribe_blob(blob=decode_blob, model_dir=model_dir, device=device)
+                        write_pcm_to_wav(pcm_window_blob, session.pcm_sample_rate, wav_path)
+                        result = await self._transcribe_pcm_window(model_dir=model_dir, wav_path=wav_path, device=device)
                     except Exception as exc:
-                        if decode_window_start_index > 0 and self._is_soft_chunk_decode_error(exc):
-                            # Some bounded WebM windows are not independently decodable even
-                            # with the original header prefix. Retry once against the full
-                            # accumulated recording to preserve live continuity.
-                            decode_window_start_index = 0
+                        if pcm_window_start_index > 0 and self._is_soft_chunk_decode_error(exc):
+                            # fallback path: retry once with full history webm payload
                             result = await self._transcribe_blob(
                                 blob=b''.join(session.accumulated_chunks),
                                 model_dir=model_dir,
                                 device=device,
                             )
+                            decode_window_start_s = 0.0
+                            pcm_window_start_index = 0
                         else:
                             raise
+                    finally:
+                        wav_path.unlink(missing_ok=True)
 
                     new_words, _new_segments, new_language, new_duration = self._normalize_full_result(result)
-
-                    decode_window_start_ms = 0
-                    if decode_window_start_index < len(session.accumulated_chunk_ranges_ms):
-                        decode_window_start_ms = session.accumulated_chunk_ranges_ms[decode_window_start_index][0]
-                    decode_window_start_s = float(decode_window_start_ms) / 1000.0
                     shifted_words = self._shift_words(new_words, decode_window_start_s)
 
+                    replace_from_word_index = 0
                     if shifted_words:
-                        if decode_window_start_index == 0:
+                        if pcm_window_start_index == 0:
                             session.words = shifted_words
+                            replace_from_word_index = 0
                         else:
                             replace_from_s = float(shifted_words[0].get('start', decode_window_start_s))
-                            session.words = self._merge_words(
+                            replace_from_word_index, session.words = self._merge_words(
                                 session.words,
                                 shifted_words,
                                 replace_from_s=replace_from_s,
@@ -403,9 +513,9 @@ class LiveTranscriptionManager:
                         'state': session.state if not is_last else 'finalizing',
                         'interimText': session.interim_text,
                         'finalized': {
-                            # Full committed snapshot each tick; bounded windows are merged back
-                            # into the cumulative session transcript before returning.
-                            'words': session.words,
+                            'mode': 'patch',
+                            'replaceFromWordIndex': replace_from_word_index,
+                            'words': session.words[replace_from_word_index:],
                             'segments': session.segments,
                         },
                         'metrics': {
@@ -419,7 +529,6 @@ class LiveTranscriptionManager:
                         },
                     }
                 except Exception as exc:
-                    # Soft-fail for known small/partial WebM decode errors and keep recording alive
                     if self._is_soft_chunk_decode_error(exc):
                         session.warning = f'Live chunk processing warning: {exc}'
                         session.error = None
@@ -433,8 +542,10 @@ class LiveTranscriptionManager:
                             'state': session.state,
                             'interimText': session.interim_text,
                             'finalized': {
+                                'mode': 'patch',
+                                'replaceFromWordIndex': len(session.words),
                                 'words': [],
-                                'segments': [],
+                                'segments': session.segments,
                             },
                             'metrics': {
                                 'serverLatencyMs': elapsed_ms,

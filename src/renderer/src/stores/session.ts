@@ -98,21 +98,44 @@ export const useSessionStore = defineStore('session', {
           if (p.startsWith('blob:')) {
             // Old ephemeral blob URL — unrestorable across sessions
             this.audioFileMissing = true
+            if (!data.transcript) {
+              transcriptStore.error = 'Transcript missing for saved recording and audio could not be recovered automatically.'
+              transcriptStore.transcriptState = 'error'
+            }
           } else if (p.startsWith('/')) {
             // Legacy absolute file path (audio was saved outside session assets)
             const exists = await window.api.fileExists(p)
             if (exists) {
-              // Serve via asset:// by filename so CSP allows playback
               const filename = p.split('/').pop() ?? ''
               recordingStore.audioBlobUrl = `asset://localhost/${filename}`
               recordingStore.recordingState = 'stopped'
+              if (!data.transcript) {
+                this.audioFileMissing = true
+                transcriptStore.error = 'Transcript missing for saved recording and audio could not be recovered automatically.'
+                transcriptStore.transcriptState = 'error'
+              }
             } else {
               this.audioFileMissing = true
+              if (!data.transcript) {
+                transcriptStore.error = 'Transcript missing for saved recording and audio could not be recovered automatically.'
+                transcriptStore.transcriptState = 'error'
+              }
             }
           } else {
             // New format: just the asset filename (e.g. "uuid.webm")
             recordingStore.audioBlobUrl = `asset://localhost/${p}`
             recordingStore.recordingState = 'stopped'
+            if (data.audioPath !== null && data.transcript === null) {
+              try {
+                const buffer = await window.api.readSessionAsset(id, data.audioPath)
+                recordingStore.audioBlob = new Blob([buffer], { type: 'audio/webm' })
+                await transcriptStore.recoverTranscriptFromAudio(recordingStore.audioBlob)
+              } catch {
+                this.audioFileMissing = true
+                transcriptStore.error = 'Transcript missing for saved recording and audio could not be recovered automatically.'
+                transcriptStore.transcriptState = 'error'
+              }
+            }
           }
         }
       } catch (err) {
@@ -216,7 +239,8 @@ export const useSessionStore = defineStore('session', {
       const annotationStore = useAnnotationStore()
       const recordingStore = useRecordingStore()
       const playbackStore = usePlaybackStore()
-      transcriptStore.$reset()
+      transcriptStore.invalidatePendingWork()
+      transcriptStore.reset()
       annotationStore.$reset()
       recordingStore.$reset()
       playbackStore.$reset()

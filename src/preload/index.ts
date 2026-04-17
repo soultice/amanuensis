@@ -60,6 +60,8 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('session:saveBlobAsset', sessionId, Buffer.from(buffer), ext),
   getAssetsDir: (sessionId: string): Promise<string> =>
     ipcRenderer.invoke('session:getAssetsDir', sessionId),
+  readSessionAsset: (sessionId: string, filename: string): Promise<ArrayBuffer> =>
+    ipcRenderer.invoke('session:readSessionAsset', sessionId, filename),
 
   // Phase 8 — Session management
   listSessions: (): Promise<Array<{ id: string; name: string; createdAt: string; updatedAt: string; wordCount: number }>> =>

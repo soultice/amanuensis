@@ -28,6 +28,7 @@ declare global {
       copyAsset(sessionId: string, srcPath: string): Promise<string>
       saveBlobAsset(sessionId: string, buffer: ArrayBuffer, ext: string): Promise<string>
       getAssetsDir(sessionId: string): Promise<string>
+      readSessionAsset(sessionId: string, filename: string): Promise<ArrayBuffer>
       // Phase 8 — Session management
       listSessions(): Promise<Array<{ id: string; name: string; createdAt: string; updatedAt: string; wordCount: number }>>
       createSession(): Promise<string>

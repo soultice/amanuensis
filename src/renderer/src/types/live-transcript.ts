@@ -12,6 +12,9 @@ export interface LiveStartResponse {
     overlapMs?: number
     warmupMs?: number
   }
+  deviceMode?: 'auto' | 'cpu' | 'cuda'
+  runtimeProvider?: string
+  availableProviders?: string[]
 }
 
 export interface LiveChunkResponse {
@@ -20,6 +23,8 @@ export interface LiveChunkResponse {
   state: 'live' | 'paused' | 'finalizing' | 'complete' | 'error'
   interimText: string
   finalized: {
+    mode: 'patch'
+    replaceFromWordIndex: number
     words: Word[]
     segments: Segment[]
   }

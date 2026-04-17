@@ -162,9 +162,6 @@ export const useRecordingStore = defineStore('recording', {
           if (e.data.size <= 0) return
           this._chunks.push(e.data)
 
-          const transcriptStore = useTranscriptStore()
-          if (!transcriptStore.liveSessionId) return
-
           if (this._liveBatchStartMs === 0) {
             this._liveBatchStartMs = this._lastChunkEndMs
           }

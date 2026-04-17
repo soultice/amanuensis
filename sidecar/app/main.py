@@ -8,6 +8,8 @@ from app.routes.health import router as health_router
 from app.routes.model import router as model_router
 from app.routes.transcribe import router as transcribe_router
 from app.services.model_manager import ModelManager
+from app.services.live_transcription import LiveTranscriptionManager
+from app.services.transcription import transcribe_file
 
 
 def create_app(user_data_dir: str, device: str = "auto") -> FastAPI:
@@ -15,6 +17,7 @@ def create_app(user_data_dir: str, device: str = "auto") -> FastAPI:
     # Initialise shared state
     state.model_manager = ModelManager(user_data_dir)
     state.transcription_device = device
+    state.live_transcription_manager = LiveTranscriptionManager(transcribe_file)
 
     api = FastAPI(title="Amanuensis Sidecar", version="0.1.0")
 

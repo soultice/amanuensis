@@ -46,3 +46,9 @@
 !20-remove-the-transcribe-button-and-functionality-it-is-not-needed-anymore-due-to-the-live-transcription/**
 !21-increase-speed-of-live-transcription/
 !21-increase-speed-of-live-transcription/**
+!22-the-text-width-should-be-fixed-and-optimized-for-reading-currently-it-flickers-as-more-text-chunks-are-coming-in/
+!22-the-text-width-should-be-fixed-and-optimized-for-reading-currently-it-flickers-as-more-text-chunks-are-coming-in/**
+!23-text-width-flicker-absorbed-into-phase-24/
+!23-text-width-flicker-absorbed-into-phase-24/**
+!24-it-seems-there-are-too-many-chunks-coming-in-the-longer-the-spoken-text-the-worse-the-delay-becomes-and-the-longer-the-queue-seems-to-be-find-optimizations-and-implement-them-optimizations-can-include-running-on-the-gpu-having-less-chunks-etc/
+!24-it-seems-there-are-too-many-chunks-coming-in-the-longer-the-spoken-text-the-worse-the-delay-becomes-and-the-longer-the-queue-seems-to-be-find-optimizations-and-implement-them-optimizations-can-include-running-on-the-gpu-having-less-chunks-etc/**

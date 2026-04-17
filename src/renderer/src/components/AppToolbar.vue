@@ -6,8 +6,8 @@
       <!-- ← Sessions button (Phase 8) -->
       <button
         class="toolbar__btn toolbar__btn--sessions"
-        :disabled="recordingStore.isActive"
-        :title="recordingStore.isActive ? 'Stop recording before leaving' : 'Back to sessions'"
+        :disabled="sessionNavigationBlocked"
+        :title="sessionNavigationBlockedTitle"
         @click="emit('closeSession')"
       >
         ← Sessions
@@ -41,7 +41,7 @@
       <button
         class="toolbar__btn"
         :class="recordToggleClass"
-        :disabled="!recordingStore.isActive && recordingStore.devices.length === 0"
+        :disabled="recordToggleDisabled"
         :title="recordToggleTitle"
         @click="handleRecordToggle"
       >
@@ -68,15 +68,21 @@
         ▶ Play
       </button>
 
-      <!-- Transcribe button — only shown when recording exists (D-03, D-04) -->
-      <button
-        v-if="recordingStore.hasRecording"
-        class="toolbar__btn toolbar__btn--transcribe"
-        :disabled="props.isTranscribing"
-        title="Transcribe recording with local ASR model"
-        @click="emit('transcribe')"
+      <!-- Live transcription warning -->
+      <span
+        v-if="transcriptStore.liveWarning"
+        class="toolbar__warning"
+        :title="transcriptStore.liveWarning"
       >
-        {{ props.isTranscribing ? 'Transcribing…' : 'Transcribe' }}
+        ⚠ Live transcription failed — recording continues
+      </span>
+      <button
+        v-if="transcriptStore.liveWarning"
+        class="toolbar__btn toolbar__btn--warn-copy"
+        :title="transcriptStore.liveWarning"
+        @click="copyLiveWarning"
+      >
+        Copy error
       </button>
 
       <!-- Error indicator -->
@@ -119,8 +125,7 @@ import { useTranscriptStore } from '../stores/transcript'
 import { useThemeStore } from '../stores/theme'
 import LevelMeter from './LevelMeter.vue'
 
-const props = defineProps<{ isTranscribing: boolean }>()
-const emit = defineEmits<{ transcribe: []; closeSession: [] }>()
+const emit = defineEmits<{ closeSession: [] }>()
 
 const recordingStore = useRecordingStore()
 const sessionStore = useSessionStore()
@@ -146,10 +151,34 @@ async function manualSave(): Promise<void> {
   await sessionStore.save()
 }
 
+async function copyLiveWarning(): Promise<void> {
+  if (!transcriptStore.liveWarning) return
+  try {
+    await navigator.clipboard.writeText(transcriptStore.liveWarning)
+  } catch {
+    // ignore clipboard errors in hardened environments
+  }
+}
+
 const saveBarTitle = computed<string>(() => {
   const remaining = Math.ceil((sessionStore.autoSavePeriodMs - (Date.now() - sessionStore.lastSavedAt)) / 1000)
   const secs = Math.max(remaining, 0)
   return `Next auto-save in ${secs}s — click to save now`
+})
+
+const sessionNavigationBlocked = computed<boolean>(() => {
+  return recordingStore.isActive || transcriptStore.isLive || transcriptStore.isTranscribing
+})
+
+const sessionNavigationBlockedTitle = computed<string>(() => {
+  if (recordingStore.isActive) return 'Stop recording before leaving'
+  if (transcriptStore.isLive || transcriptStore.isTranscribing) return 'Wait for live transcription to finish before switching sessions'
+  return 'Back to sessions'
+})
+
+const recordToggleDisabled = computed<boolean>(() => {
+  return (!recordingStore.isActive && recordingStore.devices.length === 0)
+    || (!recordingStore.isActive && (transcriptStore.isLive || transcriptStore.isTranscribing))
 })
 
 // Record/Pause/Resume toggle — derived from store state
@@ -161,7 +190,9 @@ const recordToggleLabel = computed<string>(() => {
 
 const recordToggleTitle = computed<string>(() => {
   if (recordingStore.isRecording) return 'Pause recording'
-  if (recordingStore.isPaused)    return 'Resume recording'
+  if (recordingStore.isPaused) return 'Resume recording'
+  if (transcriptStore.isLive || transcriptStore.isTranscribing) return 'Wait for live transcription to finish'
+  if (recordingStore.devices.length === 0) return 'No microphone available'
   return 'Start recording'
 })
 
@@ -290,13 +321,6 @@ function playRecording(): void {
 .toolbar__btn--play:hover {
   background: var(--bg-hl);
 }
-.toolbar__btn--transcribe {
-  background: var(--accent);
-  color: #fdf6e3;
-}
-.toolbar__btn--transcribe:hover:not(:disabled) {
-  background: var(--accent-2);
-}
 .toolbar__btn--sessions {
   background: transparent;
   color: var(--text-em);
@@ -308,6 +332,15 @@ function playRecording(): void {
 .toolbar__btn--sessions:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.toolbar__btn--warn-copy {
+  background: transparent;
+  color: #b58900;
+  border: 1px solid #b58900;
+  padding: 3px 8px;
+}
+.toolbar__btn--warn-copy:hover {
+  background: rgba(181, 137, 0, 0.12);
 }
 .toolbar__btn--theme {
   background: transparent;
@@ -321,6 +354,12 @@ function playRecording(): void {
 .toolbar__btn--theme:hover {
   color: var(--text-em);
   background: var(--bg-raised);
+}
+.toolbar__warning {
+  font-size: 0.75rem;
+  color: #b58900;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .toolbar__error {
   font-size: 0.75rem;

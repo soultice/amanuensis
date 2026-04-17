@@ -1,4 +1,4 @@
-# Phase 33: "transcription should be live from now on" - Context
+# Phase 19: "transcription should be live from now on" - Context
 
 **Gathered:** 2026-04-16
 **Status:** Ready for planning
@@ -46,7 +46,7 @@ Add live transcription during active recording so transcript text appears in nea
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Roadmap + requirements anchors
-- `.planning/ROADMAP.md` - Phase 33 scope, sequencing, and planning target
+- `.planning/ROADMAP.md` - Phase 19 scope, sequencing, and planning target
 - `.planning/PROJECT.md` - product constraints and local ASR expectations
 - `.planning/REQUIREMENTS.md` - baseline transcription/navigation contracts to preserve
 - `.planning/STATE.md` - current milestone/phase continuity context
@@ -109,5 +109,5 @@ None - discussion stayed within phase scope.
 
 ---
 
-*Phase: 33-transcription-should-be-live-from-now-on*
+*Phase: 19-transcription-should-be-live-from-now-on*
 *Context gathered: 2026-04-16*

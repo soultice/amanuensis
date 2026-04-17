@@ -41,6 +41,20 @@ npm run dev
 
 Electron opens with hot-reload. The Python FastAPI sidecar is spawned automatically via `poetry run`.
 
+### Runtime ASR device mode
+
+Use `AMANUENSIS_ASR_DEVICE` to control sidecar execution provider mode:
+
+- `auto` (default): pick best available provider (CUDA/DML/CoreML/CPU)
+- `cpu`: force CPU only
+- `cuda`: prefer CUDA and fall back to CPU when unavailable
+
+Example:
+
+```bash
+AMANUENSIS_ASR_DEVICE=auto npm run dev
+```
+
 ### First run
 
 On first launch the app shows an onboarding screen. The NVIDIA Parakeet ONNX model (~600MB) must be downloaded before transcription is available. Click **Download Model** and wait for the progress indicator to complete.

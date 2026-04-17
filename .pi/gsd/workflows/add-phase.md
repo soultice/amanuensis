@@ -45,16 +45,46 @@
       </shell>
     </then>
   </if>
-  <shell command="pi-gsd-tools">
+  <shell command="python3">
     <args>
-      <arg string="phase" />
-      <arg string="add-batch" />
+      <arg string="scripts/gsd_phase_add_guard.py" />
       <arg name="description" wrap='"' />
     </args>
     <outs>
-      <out type="string" name="batch-result" />
+      <out type="string" name="phase-add-guard" />
     </outs>
   </shell>
+  <if>
+    <condition>
+      <starts-with>
+        <left name="phase-add-guard" />
+        <right type="string" value="{&quot;allow&quot;: true" />
+      </starts-with>
+    </condition>
+    <then>
+      <shell command="pi-gsd-tools">
+        <args>
+          <arg string="phase" />
+          <arg string="add-batch" />
+          <arg name="description" wrap='"' />
+        </args>
+        <outs>
+          <out type="string" name="batch-result" />
+        </outs>
+      </shell>
+    </then>
+    <else>
+      <shell command="printf">
+        <args>
+          <arg string="%s" />
+          <arg name="phase-add-guard" wrap='"' />
+        </args>
+        <outs>
+          <out type="string" name="batch-result" />
+        </outs>
+      </shell>
+    </else>
+  </if>
 </gsd-execute>
 
 ## Context (pre-injected by WXP)
@@ -81,10 +111,10 @@ Exit.
 </step>
 
 <step name="check_result">
-The `batch-result` JSON above was already executed by WXP before this message
-reached you. Parse it:
+Parse the `batch-result` JSON above:
 
-- If it contains an error field → report the error and exit.
+- If `allow` is `false` and `reason` is `duplicate_phase_description` → do NOT add anything. Report that the request matched existing phase(s), list the matching phase numbers/names, and exit cleanly.
+- If it contains an `error` field → report the error and exit.
 - Otherwise extract `phases[]` — each has `phase_number`, `padded`, `name`,
   `slug`, `directory`.
 

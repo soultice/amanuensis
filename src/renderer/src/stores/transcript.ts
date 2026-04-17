@@ -260,13 +260,11 @@ export const useTranscriptStore = defineStore('transcript', {
         const data = (await res.json()) as LiveChunkResponse
         if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return false
 
-        // Live chunk responses provide a full committed snapshot (not append-only delta).
-        if (data.finalized.words.length > 0 || data.finalized.segments.length > 0) {
-          this.words = data.finalized.words
-          this.segments = data.finalized.segments
-          const last = this.words[this.words.length - 1]
-          if (last) this.duration = Math.max(this.duration, last.end)
-        }
+        const replaceFromWordIndex = Math.max(0, data.finalized.replaceFromWordIndex ?? 0)
+        this.words = [...this.words.slice(0, replaceFromWordIndex), ...data.finalized.words]
+        this.segments = data.finalized.segments
+        const last = this.words[this.words.length - 1]
+        if (last) this.duration = Math.max(this.duration, last.end)
 
         this.liveServerLatencyMs = data.metrics?.serverLatencyMs ?? this.liveServerLatencyMs
         this.liveTimeToFirstTokenMs = data.metrics?.timeToFirstTokenMs ?? this.liveTimeToFirstTokenMs

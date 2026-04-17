@@ -13,7 +13,11 @@ from app.services.live_transcription import (
     LiveTransitionError,
     resolve_live_speed_mode,
 )
-from app.services.transcription import transcribe_file, warm_model_for_live
+from app.services.transcription import (
+    describe_runtime_provider,
+    transcribe_file,
+    warm_model_for_live,
+)
 
 router = APIRouter(prefix='/transcribe')
 
@@ -99,6 +103,7 @@ async def live_start(req: LiveStartRequest):
         mime_type=req.mimeType,
     )
     result.setdefault('speedMode', resolve_live_speed_mode())
+    result.update(describe_runtime_provider(state.transcription_device))
 
     warnings: list[str] = []
     if result.get('warning'):

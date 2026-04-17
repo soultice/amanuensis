@@ -22,50 +22,36 @@ def _session() -> LiveSession:
     )
 
 
-def test_build_decode_window_blob_keeps_first_chunk_header_prefix() -> None:
+def test_build_pcm_window_blob_uses_full_reconcile_interval() -> None:
     manager = _manager()
     session = _session()
 
-    session.accumulated_chunks = [b'HEADER', *[f'C{i}'.encode() for i in range(1, 20)]]
+    session.pcm_chunks = [b'A', b'B', b'C', b'D']
+    session.pcm_chunk_ranges_ms = [(0, 500), (500, 1000), (1000, 1500), (1500, 2000)]
 
-    blob = manager.build_decode_window_blob(
+    blob = manager.build_pcm_window_blob(
         session=session,
         chunk_start_ms=0,
         chunk_end_ms=500,
-        seq=13,  # non-reconcile chunk
+        seq=8,
     )
 
-    assert blob == b''.join([session.accumulated_chunks[0], *session.accumulated_chunks[-12:]])
-    assert blob.startswith(b'HEADER')
+    assert blob == b'ABCD'
 
 
-def test_build_decode_window_blob_uses_full_reconcile_interval() -> None:
+def test_build_pcm_window_blob_limits_to_bounded_tail() -> None:
     manager = _manager()
     session = _session()
 
-    session.accumulated_chunks = [b'HEADER', b'C1', b'C2', b'C3']
+    session.pcm_chunks = [b'H', *[f'C{i}'.encode() for i in range(1, 20)]]
+    session.pcm_chunk_ranges_ms = [(i * 500, (i + 1) * 500) for i in range(20)]
 
-    blob = manager.build_decode_window_blob(
+    blob = manager.build_pcm_window_blob(
         session=session,
         chunk_start_ms=0,
         chunk_end_ms=500,
-        seq=8,  # FULL_RECONCILE_EVERY_N_CHUNKS
+        seq=13,
     )
 
-    assert blob == b''.join(session.accumulated_chunks)
-
-
-def test_build_decode_window_blob_does_not_duplicate_header_when_window_covers_all_chunks() -> None:
-    manager = _manager()
-    session = _session()
-
-    session.accumulated_chunks = [b'HEADER', b'C1', b'C2']
-
-    blob = manager.build_decode_window_blob(
-        session=session,
-        chunk_start_ms=0,
-        chunk_end_ms=500,
-        seq=1,
-    )
-
-    assert blob == b'HEADERC1C2'
+    assert blob.endswith(b'C19')
+    assert len(blob) < len(b''.join(session.pcm_chunks))

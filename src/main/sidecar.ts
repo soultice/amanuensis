@@ -26,6 +26,7 @@ export async function startSidecar(): Promise<number> {
   const port = await findFreePort()
   sidecarPort = port
   const userDataDir = app.getPath('userData')
+  const resolvedDevice = (process.env['AMANUENSIS_ASR_DEVICE'] || 'auto').toLowerCase()
 
   let command: string
   let args: string[]
@@ -35,7 +36,7 @@ export async function startSidecar(): Promise<number> {
     // Development: use Poetry
     const sidecarDir = path.join(process.cwd(), 'sidecar')
     command = process.platform === 'win32' ? 'poetry.exe' : 'poetry'
-    args = ['run', 'python', '-m', 'app.main', '--port', String(port), '--user-data', userDataDir]
+    args = ['run', 'python', '-m', 'app.main', '--port', String(port), '--user-data', userDataDir, '--device', resolvedDevice]
     cwd = sidecarDir
     // Prepend all known Poetry install locations to PATH so the platform-appropriate
     // poetry / poetry.exe binary can be found regardless of how Poetry was installed.
@@ -58,7 +59,7 @@ export async function startSidecar(): Promise<number> {
     // Production: use PyInstaller binary from extraResources
     const binaryName = process.platform === 'win32' ? 'amanuensis-sidecar.exe' : 'amanuensis-sidecar'
     command = path.join(process.resourcesPath, 'sidecar', binaryName)
-    args = ['--port', String(port), '--user-data', userDataDir]
+    args = ['--port', String(port), '--user-data', userDataDir, '--device', resolvedDevice]
     console.log('[sidecar] production binary:', command)
     console.log('[sidecar] userData:', userDataDir)
   }

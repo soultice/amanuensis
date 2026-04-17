@@ -40,7 +40,15 @@ class ModelManager:
 
     @property
     def state(self) -> ModelState:
-        return self._state
+        with self._lock:
+            if self._state != "downloading":
+                has_markers = self._has_markers()
+                if has_markers:
+                    self._state = "present"
+                    self._error = None
+                elif self._state == "present":
+                    self._state = "missing"
+            return self._state
 
     @property
     def progress(self) -> int:
@@ -51,7 +59,11 @@ class ModelManager:
         return self._error
 
     def get_model_path(self) -> Path:
-        return self._model_dir
+        if self.state != "present":
+            raise FileNotFoundError(
+                f"ASR model is not present at {self._model_dir} (expected markers: {', '.join(self.MODEL_MARKERS)})"
+            )
+        return self._model_dir.resolve()
 
     def set_progress_callback(self, cb: Callable[[int], None]) -> None:
         self._progress_callback = cb
