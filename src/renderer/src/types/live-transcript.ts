@@ -27,6 +27,8 @@ export interface LiveChunkResponse {
     serverLatencyMs?: number
     timeToFirstTokenMs?: number
     queueDepth?: number
+    workerBusy?: boolean
+    waitingRequests?: number
     updateGapMs?: number
     speedMode?: 'safe_auto' | 'aggressive_internal'
   }
@@ -54,6 +56,8 @@ export interface LiveStatusResponse {
     observed?: {
       ttftMs?: number | null
       lastChunkLatencyMs?: number | null
+      workerBusy?: boolean
+      waitingRequests?: number
     }
   }
 }

@@ -39,6 +39,8 @@ export const useTranscriptStore = defineStore('transcript', {
     liveTimeToFirstTokenMs: null as number | null,
     liveServerLatencyMs: null as number | null,
     liveQueueDepth: 0,
+    liveWorkerBusy: false as boolean,
+    liveWaitingRequests: 0 as number,
     liveUpdateGapMs: null as number | null,
     liveSpeedMode: 'safe_auto' as 'safe_auto' | 'aggressive_internal',
     boundaryMarkers: [] as Array<{ type: 'pause-start' | 'pause-end'; atMs: number }>,
@@ -89,6 +91,8 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveTimeToFirstTokenMs = null
       this.liveServerLatencyMs = null
       this.liveQueueDepth = 0
+      this.liveWorkerBusy = false
+      this.liveWaitingRequests = 0
       this.liveUpdateGapMs = null
       this.liveSpeedMode = 'safe_auto'
       this.boundaryMarkers = []
@@ -267,6 +271,8 @@ export const useTranscriptStore = defineStore('transcript', {
         this.liveServerLatencyMs = data.metrics?.serverLatencyMs ?? this.liveServerLatencyMs
         this.liveTimeToFirstTokenMs = data.metrics?.timeToFirstTokenMs ?? this.liveTimeToFirstTokenMs
         this.liveQueueDepth = data.metrics?.queueDepth ?? this.liveQueueDepth
+        this.liveWorkerBusy = data.metrics?.workerBusy ?? this.liveWorkerBusy
+        this.liveWaitingRequests = data.metrics?.waitingRequests ?? this.liveWaitingRequests
         this.liveUpdateGapMs = data.metrics?.updateGapMs ?? this.liveUpdateGapMs
         this.liveSpeedMode = data.metrics?.speedMode ?? this.liveSpeedMode
 
@@ -386,6 +392,8 @@ export const useTranscriptStore = defineStore('transcript', {
           if (data.warning) this.liveWarning = data.warning
           if (data.error) this.error = data.error
           this.liveQueueDepth = data.queueDepth ?? this.liveQueueDepth
+          this.liveWorkerBusy = data.metrics?.observed?.workerBusy ?? this.liveWorkerBusy
+          this.liveWaitingRequests = data.metrics?.observed?.waitingRequests ?? this.liveWaitingRequests
           this.liveTimeToFirstTokenMs = data.metrics?.observed?.ttftMs ?? this.liveTimeToFirstTokenMs
           this.liveServerLatencyMs = data.metrics?.observed?.lastChunkLatencyMs ?? this.liveServerLatencyMs
         } catch {
@@ -435,6 +443,8 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveTimeToFirstTokenMs = null
       this.liveServerLatencyMs = null
       this.liveQueueDepth = 0
+      this.liveWorkerBusy = false
+      this.liveWaitingRequests = 0
       this.liveUpdateGapMs = null
       this.liveSpeedMode = 'safe_auto'
       this.boundaryMarkers = []

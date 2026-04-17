@@ -9,6 +9,9 @@
     <span v-if="showLiveTelemetry" class="status-bar__item status-bar__telemetry">
       Latency: TTFT {{ ttftLabel }} · Queue {{ transcriptStore.liveQueueDepth }}
     </span>
+    <span v-if="showLiveTelemetry" class="status-bar__item status-bar__telemetry">
+      Pipeline: Worker {{ transcriptStore.liveWorkerBusy ? 'Busy' : 'Idle' }} · Waiting {{ transcriptStore.liveWaitingRequests }}
+    </span>
     <span v-if="transcriptStore.liveWarning" class="status-bar__warning">
       Live transcription failed — recording continues
     </span>
