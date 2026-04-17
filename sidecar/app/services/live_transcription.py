@@ -176,8 +176,12 @@ class LiveTranscriptionManager:
         chunk_end_ms: int,
         seq: int,
     ) -> bytes:
+        chunks = session.accumulated_chunks
+        if not chunks:
+            return b''
+
         if seq % FULL_RECONCILE_EVERY_N_CHUNKS == 0:
-            return b''.join(session.accumulated_chunks)
+            return b''.join(chunks)
 
         max_window_ms = (
             SAFE_AUTO_MAX_WINDOW_MS
@@ -187,7 +191,14 @@ class LiveTranscriptionManager:
         chunk_span_ms = max(1, chunk_end_ms - chunk_start_ms)
         window_span_ms = max_window_ms + WINDOW_OVERLAP_MS
         window_chunk_count = max(1, int(window_span_ms / chunk_span_ms))
-        return b''.join(session.accumulated_chunks[-window_chunk_count:])
+
+        tail = chunks[-window_chunk_count:]
+        # MediaRecorder chunks after the first one usually do not contain the WebM
+        # EBML header. Keep the first chunk as a stable prefix when we window,
+        # otherwise ffmpeg intermittently fails with EBML header parse errors.
+        if len(tail) < len(chunks):
+            return b''.join([chunks[0], *tail])
+        return b''.join(tail)
 
     async def ingest_chunk(
         self,
