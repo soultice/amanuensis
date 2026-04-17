@@ -365,145 +365,49 @@ Plans:
 - [x] 18-02: Implement Parakeet transcription path and preserve UI contract
 - [x] 18-03: Packaging alignment, docs updates, and roadmap bookkeeping
 
-### Phase 19: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
+### Phase 19: "transcription should be live from now on"
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add live transcription during active recording so transcript text appears in near real-time, while preserving existing recording reliability and finalized word timestamp contracts.
+**Requirements**: D-01–D-09 (see `19-CONTEXT.md`)
 **Depends on:** Phase 18
-**Plans:** 0 plans
+**Plans:** 3/3 planned, automated verification passed; human UX validation Complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 19 to break down)
+- [x] 19-01: Sidecar live transcription session protocol and lifecycle-safe routes
+- [x] 19-02: Renderer live session orchestration and interim/final transcript state
+- [x] 19-03: UI warning/finalizing states and integration verification
 
-### Phase 20: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
+**Success Criteria:**
+1. Interim transcript text appears during recording with low-latency updates
+2. Finalized chunks replace interim text and keep word timestamps only on finalized data
+3. Pause/resume recording also pauses/resumes live transcription without corrupting transcript boundaries
+4. Stopping recording finalizes any Complete interim transcript and leaves the transcript in the existing final schema
+5. If live transcription fails, recording continues and the UI shows a visible non-blocking warning
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+### Phase 20: "remove the transcribe button and functionality it is not needed anymore due to the live transcription"
+
+**Goal:** Remove the legacy manual transcribe affordance now that live transcription owns the recording-to-transcript flow.
+**Requirements**: TRANS-01, TRANS-03, TRANS-04, NAV-01, NAV-02, NAV-03
 **Depends on:** Phase 19
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete ✓
+**Completed:** 2026-04-17
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 20 to break down)
+- [x] 20-01: Convert manual batch transcription into internal recovery for live failures and restored sessions
+- [x] 20-02: Remove visible Transcribe UI and align live-first copy/status UX
 
-### Phase 21: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
+### Phase 21: "increase speed of live transcription"
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Improve first-token speed and live update cadence so live transcription feels natural while preserving Phase 19 transcript/failure contracts.
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08 (see `21-CONTEXT.md`)
 **Depends on:** Phase 20
-**Plans:** 0 plans
+**Plans:** 3/3 plans complete ✓
+**Completed:** 2026-04-17
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 21 to break down)
-
-### Phase 22: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 21
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 22 to break down)
-
-### Phase 23: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 22
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 23 to break down)
-
-### Phase 24: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 23
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 24 to break down)
-
-### Phase 25: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 24
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 25 to break down)
-
-### Phase 26: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 25
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 26 to break down)
-
-### Phase 27: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 26
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 27 to break down)
-
-### Phase 28: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 27
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 28 to break down)
-
-### Phase 29: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 28
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 29 to break down)
-
-### Phase 30: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 29
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 30 to break down)
-
-### Phase 31: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 30
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 31 to break down)
-
-### Phase 32: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 I want to try this model instead of the current openai-whisper"
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 31
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 32 to break down)
+- [x] 21-01: Sidecar latency instrumentation and natural-feel target contracts
+- [x] 21-02: Sidecar bounded-work speed architecture with safe_auto default and internal aggressive mode
+- [x] 21-03: Renderer adaptive cadence and UX verification using sidecar telemetry
 
 ---
-*Roadmap last cleaned: 2026-04-16*
+*Roadmap last cleaned: 2026-04-17*

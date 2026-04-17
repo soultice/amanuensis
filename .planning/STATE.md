@@ -2,13 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-last_updated: "2026-04-17T13:02:39.000Z"
+status: Milestone complete
+stopped_at: Completed Phase 21 execution and verification
+last_updated: "2026-04-17T14:38:27.467Z"
 progress:
   total_phases: 21
-  completed_phases: 20
-  total_plans: 45
-  completed_plans: 45
+  completed_phases: 21
+  total_plans: 48
+  completed_plans: 48
 ---
 
 # State: Amanuensis — v1.0 COMPLETE
@@ -18,7 +19,7 @@ progress:
 
 ## Summary
 
-Milestone v1.0 shipped with Phases 1–17 complete. Post-milestone follow-up work then delivered Phase 18 (Parakeet migration), Phase 19 (live transcription), and Phase 20 (live-first transcribe cleanup). Phase 19 still has separate human UX verification notes, but all Phase 20 execution work is now complete.
+Milestone v1.0 shipped with Phases 1–17 complete. Post-milestone follow-up work then delivered Phase 18 (Parakeet migration), Phase 19 (live transcription), Phase 20 (live-first transcribe cleanup), and Phase 21 (live-speed optimization across sidecar + renderer telemetry-driven cadence).
 
 ## Phase Status
 
@@ -44,6 +45,7 @@ Milestone v1.0 shipped with Phases 1–17 complete. Post-milestone follow-up wor
 | 18 | Parakeet ONNX Migration | 3/3 | ✓ Complete |
 | 19 | Live Transcription | 3/3 | ⚠ Human verification needed |
 | 20 | Remove Transcribe Button | 2/2 | ✓ Complete |
+| 21 | Increase Live Transcription Speed | 3/3 | ✓ Complete |
 
 ## Next Milestone
 
@@ -51,8 +53,8 @@ Start `/gsd-new-milestone` to define v2.0 scope.
 
 ## Session Resume
 
-- **Stopped at:** Phase 21 context gathered
-- **Resume file:** `.planning/phases/21-increase-speed-of-live-transcription/21-CONTEXT.md`
+- **Stopped at:** Completed Phase 21 execution and verification
+- **Resume file:** None
 
 ## Accumulated Context
 
@@ -64,3 +66,4 @@ Start `/gsd-new-milestone` to define v2.0 scope.
 - Duplicate scaffold artifacts pruned: installability clones (17–24), Parakeet clones (19–32), and live-transcription clones (34–46)
 - Phase 21 added: "increase speed of live transcription"
 - Phase 21 context gathered at `.planning/phases/21-increase-speed-of-live-transcription/21-CONTEXT.md`
+- Phase 21 execution complete: `21-01`, `21-02`, and `21-03` summaries + verification written
