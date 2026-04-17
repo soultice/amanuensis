@@ -157,6 +157,8 @@ class LiveTranscriptionManager:
                 raise LiveSequenceError(f'Chunk sequence must increase: got {seq}, last={session.last_seq}')
 
             started = time.perf_counter()
+            if session.first_chunk_received_at is None:
+                session.first_chunk_received_at = started
             session.queue_depth += 1
             tmp_path: Path | None = None
             try:
@@ -189,6 +191,20 @@ class LiveTranscriptionManager:
                     session.state = 'finalizing'
 
                 elapsed_ms = int((time.perf_counter() - started) * 1000)
+                session.chunk_latency_ms_samples.append(elapsed_ms)
+
+                emitted_at = time.perf_counter()
+                if session.first_result_emitted_at is None:
+                    session.first_result_emitted_at = emitted_at
+                    if session.first_chunk_received_at is not None:
+                        session.ttft_ms = int((emitted_at - session.first_chunk_received_at) * 1000)
+
+                update_gap_ms: int | None = None
+                if session.last_result_emitted_at is not None:
+                    update_gap_ms = int((emitted_at - session.last_result_emitted_at) * 1000)
+                    session.update_gap_ms_samples.append(update_gap_ms)
+                session.last_result_emitted_at = emitted_at
+
                 session.warning = None
                 session.error = None
 
@@ -204,6 +220,9 @@ class LiveTranscriptionManager:
                     },
                     'metrics': {
                         'serverLatencyMs': elapsed_ms,
+                        'timeToFirstTokenMs': session.ttft_ms,
+                        'queueDepth': session.queue_depth,
+                        'updateGapMs': update_gap_ms,
                     },
                 }
             except Exception as exc:
@@ -212,6 +231,8 @@ class LiveTranscriptionManager:
                     session.warning = f'Live chunk processing warning: {exc}'
                     session.error = None
                     session.last_seq = seq
+                    elapsed_ms = int((time.perf_counter() - started) * 1000)
+                    session.chunk_latency_ms_samples.append(elapsed_ms)
                     return {
                         'sessionId': session.id,
                         'seq': seq,
@@ -222,7 +243,10 @@ class LiveTranscriptionManager:
                             'segments': [],
                         },
                         'metrics': {
-                            'serverLatencyMs': int((time.perf_counter() - started) * 1000),
+                            'serverLatencyMs': elapsed_ms,
+                            'timeToFirstTokenMs': session.ttft_ms,
+                            'queueDepth': session.queue_depth,
+                            'updateGapMs': None,
                         },
                     }
 
@@ -276,6 +300,7 @@ class LiveTranscriptionManager:
 
     async def status(self, session_id: str) -> dict[str, Any]:
         session = await self._require_session(session_id)
+        last_chunk_latency_ms = session.chunk_latency_ms_samples[-1] if session.chunk_latency_ms_samples else None
         return {
             'sessionId': session.id,
             'state': session.state,
@@ -283,4 +308,22 @@ class LiveTranscriptionManager:
             'queueDepth': session.queue_depth,
             'warning': session.warning,
             'error': session.error,
+            'metrics': {
+                'targets': {
+                    'ttftP50Ms': TTFT_P50_TARGET_MS,
+                    'ttftP95Ms': TTFT_P95_TARGET_MS,
+                    'updateCadenceP50Ms': UPDATE_CADENCE_P50_TARGET_MS,
+                    'queueDepthP95': QUEUE_DEPTH_P95_TARGET,
+                },
+                'observed': {
+                    'ttftMs': session.ttft_ms,
+                    'lastChunkLatencyMs': last_chunk_latency_ms,
+                },
+                'targets.ttftP50Ms': TTFT_P50_TARGET_MS,
+                'targets.ttftP95Ms': TTFT_P95_TARGET_MS,
+                'targets.updateCadenceP50Ms': UPDATE_CADENCE_P50_TARGET_MS,
+                'targets.queueDepthP95': QUEUE_DEPTH_P95_TARGET,
+                'observed.ttftMs': session.ttft_ms,
+                'observed.lastChunkLatencyMs': last_chunk_latency_ms,
+            },
         }
