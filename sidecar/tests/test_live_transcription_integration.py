@@ -139,6 +139,46 @@ def test_live_stop_contract_unchanged_with_metrics_enabled() -> None:
     assert set(['words', 'segments', 'language', 'duration']).issubset(payload.keys())
 
 
+def test_live_failure_semantics_preserved_in_safe_auto_and_aggressive(monkeypatch) -> None:
+    for mode in ('safe_auto', 'aggressive_internal'):
+        monkeypatch.setenv('AMANUENSIS_LIVE_SPEED_MODE', mode)
+        client = _client()
+
+        start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
+        assert start.status_code == 200
+        session_id = start.json()['sessionId']
+        assert start.json()['speedMode'] == mode
+
+        def _boom(_model_dir: Path, _audio_path: Path, _device: str) -> dict:
+            raise RuntimeError(f'forced integration failure ({mode})')
+
+        assert state.live_transcription_manager is not None
+        monkeypatch.setattr(state.live_transcription_manager, '_transcribe_callable', _boom)
+
+        chunk = client.post(
+            '/transcribe/live/chunk',
+            data={
+                'sessionId': session_id,
+                'seq': '1',
+                'chunkStartMs': '0',
+                'chunkEndMs': '500',
+                'isLast': 'false',
+            },
+            files={'audio': ('chunk.webm', b'aaa', 'audio/webm')},
+        )
+        assert chunk.status_code == 500
+
+        status = client.get('/transcribe/live/status', params={'sessionId': session_id})
+        assert status.status_code == 200
+        status_payload = status.json()
+        assert status_payload['warning'] is not None
+        assert status_payload['error'] is not None
+
+        stop = client.post('/transcribe/live/stop', json={'sessionId': session_id, 'atMs': 600})
+        assert stop.status_code == 200
+        assert set(['words', 'segments', 'language', 'duration']).issubset(stop.json().keys())
+
+
 def test_live_failure_warning_nonfatal(monkeypatch) -> None:
     client = _client()
 
