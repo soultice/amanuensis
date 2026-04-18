@@ -2,7 +2,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form, WebSocket
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -260,15 +260,83 @@ async def live_input_socket(websocket: WebSocket):
     if state.live_transcription_manager is None:
         await websocket.close(code=1011, reason='Live transcription manager not ready')
         return
+    if state.model_manager is None or state.model_manager.state != 'present':
+        await websocket.close(code=1011, reason='ASR model not ready')
+        return
 
     try:
-        await state.live_transcription_manager._require_session(session_id)
+        await state.live_transcription_manager.mark_input_ready(session_id)
     except LiveSessionNotFound:
         await websocket.close(code=1008, reason=f'Live session not found: {session_id}')
         return
 
     await websocket.accept()
-    await websocket.close(code=1000)
+
+    async def _emit_fatal(message: str) -> None:
+        await state.live_transcription_manager.push_output_event(
+            session_id,
+            {
+                'type': 'error',
+                'sessionId': session_id,
+                'state': 'error',
+                'fatal': True,
+                'message': message,
+            },
+        )
+
+    try:
+        while True:
+            payload = await websocket.receive_json()
+            event_type = payload.get('type')
+
+            if event_type == 'start':
+                session = await state.live_transcription_manager._require_session(session_id)
+                session.state = 'live'
+                await state.live_transcription_manager.push_output_event(
+                    session_id,
+                    {'type': 'state', 'sessionId': session_id, 'state': 'live'},
+                )
+                continue
+            if event_type == 'pause':
+                await state.live_transcription_manager.pause_session(session_id, int(payload['atMs']))
+                continue
+            if event_type == 'resume':
+                await state.live_transcription_manager.resume_session(session_id, int(payload['atMs']))
+                continue
+            if event_type == 'stop':
+                await state.live_transcription_manager.stop_session(session_id, int(payload['atMs']))
+                break
+            if event_type != 'pcm':
+                await _emit_fatal(f'Unsupported input event type: {event_type}')
+                break
+            if payload.get('sessionId') != session_id:
+                await _emit_fatal('PCM metadata sessionId does not match websocket session')
+                break
+
+            pcm_bytes = await websocket.receive_bytes()
+            if len(pcm_bytes) != int(payload['bytes']):
+                await _emit_fatal('PCM packet byte length does not match metadata.bytes')
+                break
+
+            await state.live_transcription_manager.ingest_pcm(
+                session_id=session_id,
+                seq=int(payload['seq']),
+                capture_start_sample=int(payload['captureStartSample']),
+                capture_end_sample=int(payload['captureEndSample']),
+                capture_start_ms=float(payload['captureStartMs']),
+                capture_end_ms=float(payload['captureEndMs']),
+                sample_rate=int(payload['sampleRate']),
+                channels=int(payload['channels']),
+                pcm_bytes=pcm_bytes,
+                model_dir=state.model_manager.get_model_path(),
+                device=state.transcription_device,
+            )
+    except WebSocketDisconnect:
+        return
+    except Exception as exc:
+        await _emit_fatal(str(exc))
+    finally:
+        await websocket.close(code=1000)
 
 
 @router.websocket('/live/output')
@@ -283,7 +351,7 @@ async def live_output_socket(websocket: WebSocket):
         return
 
     try:
-        session = await state.live_transcription_manager._require_session(session_id)
+        session = await state.live_transcription_manager.mark_output_ready(session_id)
     except LiveSessionNotFound:
         await websocket.close(code=1008, reason=f'Live session not found: {session_id}')
         return
@@ -299,7 +367,17 @@ async def live_output_socket(websocket: WebSocket):
             'waitingRequests': session.waiting_requests,
         }
     )
-    await websocket.close(code=1000)
+
+    try:
+        while True:
+            event = await state.live_transcription_manager.next_output_event(session_id)
+            await websocket.send_json(event)
+            if event.get('type') in {'complete', 'error'}:
+                break
+    except WebSocketDisconnect:
+        return
+    finally:
+        await websocket.close(code=1000)
 
 
 @router.get('/live/status')

@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+import asyncio
+
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -21,7 +24,6 @@ class _FakeModelManager:
 
 
 def _install_fake_pipeline(monkeypatch) -> None:
-    monkeypatch.setattr(live_service, 'decode_webm_to_pcm', lambda audio_path: (audio_path.read_bytes() or b'x', 16000))
     monkeypatch.setattr(live_service, 'write_pcm_to_wav', lambda pcm, _sample_rate, wav_path: wav_path.write_bytes(pcm))
 
     def _fake_transcribe(_model_dir: Path, wav_path: Path, _device: str) -> dict:
@@ -158,6 +160,120 @@ def test_live_pcm_window_path_preserves_full_transcript_snapshot(monkeypatch) ->
     assert 'word' in full_text
 
 
+class _FakeInputWebSocket:
+    def __init__(self, session_id: str, json_messages: list[dict], byte_messages: list[bytes]) -> None:
+        self.query_params = {'sessionId': session_id}
+        self._json_messages = list(json_messages)
+        self._byte_messages = list(byte_messages)
+
+    async def accept(self) -> None:
+        return None
+
+    async def receive_json(self) -> dict:
+        if not self._json_messages:
+            raise WebSocketDisconnect(code=1000)
+        return self._json_messages.pop(0)
+
+    async def receive_bytes(self) -> bytes:
+        if not self._byte_messages:
+            raise WebSocketDisconnect(code=1000)
+        return self._byte_messages.pop(0)
+
+    async def close(self, code: int = 1000, reason: str | None = None) -> None:
+        return None
+
+
+def test_live_websocket_pcm_flow_emits_patch_and_complete(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    prepare = client.post(
+        '/transcribe/live/prepare',
+        json={
+            'sampleRate': 16000,
+            'channels': 1,
+            'pcmEncoding': 'pcm_s16le',
+            'packetSamples': 2048,
+            'archiveMimeType': 'audio/webm;codecs=opus',
+        },
+    )
+    assert prepare.status_code == 200
+    session_id = prepare.json()['sessionId']
+
+    websocket = _FakeInputWebSocket(
+        session_id,
+        [
+            {'type': 'start', 'sessionId': session_id},
+            {
+                'type': 'pcm',
+                'sessionId': session_id,
+                'seq': 1,
+                'captureStartSample': 0,
+                'captureEndSample': 2048,
+                'captureStartMs': 0,
+                'captureEndMs': 128,
+                'sampleRate': 16000,
+                'channels': 1,
+                'bytes': 10,
+                'pcmEncoding': 'pcm_s16le',
+            },
+            {'type': 'stop', 'sessionId': session_id, 'atMs': 128},
+        ],
+        [b'alpha beta'],
+    )
+
+    asyncio.run(transcribe_routes.live_input_socket(websocket))
+    state_event = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    patch = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    telemetry = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    complete = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    assert state_event['type'] == 'state'
+    assert patch['type'] == 'patch'
+    assert telemetry['type'] == 'telemetry'
+    assert complete['type'] == 'complete'
+    assert set(['words', 'segments', 'language', 'duration']).issubset(complete.keys())
+
+
+def test_live_websocket_pause_resume_excludes_paused_spans(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    prepare = client.post(
+        '/transcribe/live/prepare',
+        json={
+            'sampleRate': 16000,
+            'channels': 1,
+            'pcmEncoding': 'pcm_s16le',
+            'packetSamples': 2048,
+            'archiveMimeType': 'audio/webm;codecs=opus',
+        },
+    )
+    session_id = prepare.json()['sessionId']
+
+    websocket = _FakeInputWebSocket(
+        session_id,
+        [
+            {'type': 'start', 'sessionId': session_id},
+            {'type': 'pause', 'sessionId': session_id, 'atMs': 400},
+            {'type': 'resume', 'sessionId': session_id, 'atMs': 900},
+            {'type': 'stop', 'sessionId': session_id, 'atMs': 1200},
+        ],
+        [],
+    )
+
+    asyncio.run(transcribe_routes.live_input_socket(websocket))
+    state_event = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    paused = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    resumed = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    complete = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    assert state_event['type'] == 'state'
+    assert paused['state'] == 'paused'
+    assert resumed['state'] == 'live'
+    assert complete['type'] == 'complete'
+
+    session = state.live_transcription_manager._sessions[session_id]
+    assert session.paused_spans == [{'startMs': 400, 'endMs': 900}]
+    assert complete['duration'] == 1.2
+
+
 def test_live_stop_contract_unchanged_with_metrics_enabled(monkeypatch) -> None:
     client = _client(monkeypatch)
 
@@ -178,65 +294,3 @@ def test_live_stop_contract_unchanged_with_metrics_enabled(monkeypatch) -> None:
     assert set(['words', 'segments', 'language', 'duration']).issubset(payload.keys())
 
 
-def test_chunk_decode_fallback_uses_stitched_window_without_warning(monkeypatch) -> None:
-    client = _client(monkeypatch)
-
-    def _decode_requires_header(audio_path: Path) -> tuple[bytes, int]:
-        payload = audio_path.read_bytes()
-        if payload.startswith(b'head'):
-            return payload, 16000
-        raise RuntimeError('ffmpeg conversion failed: EBML header parsing failed')
-
-    monkeypatch.setattr(live_service, 'decode_webm_to_pcm', _decode_requires_header)
-
-    start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
-    session_id = start.json()['sessionId']
-
-    first = client.post(
-        '/transcribe/live/chunk',
-        data={'sessionId': session_id, 'seq': '1', 'chunkStartMs': '0', 'chunkEndMs': '500', 'isLast': 'false'},
-        files={'audio': ('chunk.webm', b'head alpha', 'audio/webm')},
-    )
-    assert first.status_code == 200
-
-    second = client.post(
-        '/transcribe/live/chunk',
-        data={'sessionId': session_id, 'seq': '2', 'chunkStartMs': '500', 'chunkEndMs': '1000', 'isLast': 'false'},
-        files={'audio': ('chunk.webm', b' beta', 'audio/webm')},
-    )
-    assert second.status_code == 200
-
-    status = client.get('/transcribe/live/status', params={'sessionId': session_id})
-    assert status.status_code == 200
-    assert status.json()['warning'] is None
-
-    stop = client.post('/transcribe/live/stop', json={'sessionId': session_id, 'atMs': 1100})
-    assert stop.status_code == 200
-    full_text = ''.join(word['word'] for word in stop.json()['words']).strip()
-    assert 'beta' in full_text
-
-
-def test_ebml_soft_failure_warning_remains_nonfatal(monkeypatch) -> None:
-    # Keep explicit EBML regression mention so soft-failure contract remains covered.
-    def _boom_decode(_audio_path: Path) -> tuple[bytes, int]:
-        raise RuntimeError('ffmpeg conversion failed: EBML header parsing failed')
-
-    monkeypatch.setattr(live_service, 'decode_webm_to_pcm', _boom_decode)
-    monkeypatch.setattr(transcribe_routes, 'warm_model_for_live', lambda *_args, **_kwargs: {'warmupMs': 1.0})
-
-    app = create_app('/tmp/amanuensis-test', device='cpu')
-    state.model_manager = _FakeModelManager()
-    client = TestClient(app)
-
-    start = client.post('/transcribe/live/start', json={'sampleRate': 44100, 'channels': 1, 'mimeType': 'audio/webm'})
-    session_id = start.json()['sessionId']
-
-    chunk = client.post(
-        '/transcribe/live/chunk',
-        data={'sessionId': session_id, 'seq': '1', 'chunkStartMs': '0', 'chunkEndMs': '500', 'isLast': 'false'},
-        files={'audio': ('chunk.webm', b'bad', 'audio/webm')},
-    )
-    assert chunk.status_code == 200
-
-    stop = client.post('/transcribe/live/stop', json={'sessionId': session_id, 'atMs': 600})
-    assert stop.status_code == 200

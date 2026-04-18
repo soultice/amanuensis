@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import os
-import tempfile
+import queue
 import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Callable
 
-from app.services.transcription import decode_webm_to_pcm, transcribe_wav_file, write_pcm_to_wav
+from app.services.transcription import transcribe_wav_file, write_pcm_to_wav
 
 TTFT_P50_TARGET_MS = 800
 TTFT_P95_TARGET_MS = 1500
@@ -25,6 +26,7 @@ SAFE_AUTO_MAX_WINDOW_MS = 6000
 AGGRESSIVE_MAX_WINDOW_MS = 2500
 WINDOW_OVERLAP_MS = 200
 FULL_RECONCILE_EVERY_N_CHUNKS = 8
+PCM_SAMPLE_WIDTH_BYTES = 2
 
 
 def resolve_live_speed_mode() -> str:
@@ -59,6 +61,7 @@ class LiveSession:
     created_at: str
     state: str = 'live'
     last_seq: int = 0
+    next_expected_seq: int = 1
     interim_text: str = ''
     words: list[dict[str, Any]] = field(default_factory=list)
     segments: list[dict[str, Any]] = field(default_factory=list)
@@ -77,11 +80,14 @@ class LiveSession:
     update_gap_ms_samples: list[int] = field(default_factory=list)
     chunk_latency_ms_samples: list[int] = field(default_factory=list)
     boundaries: list[dict[str, Any]] = field(default_factory=list)
-    accumulated_chunks: list[bytes] = field(default_factory=list)
-    accumulated_chunk_ranges_ms: list[tuple[int, int]] = field(default_factory=list)
+    paused_spans: list[dict[str, int]] = field(default_factory=list)
+    _pause_started_at_ms: int | None = None
     pcm_sample_rate: int = 16000
-    pcm_chunks: list[bytes] = field(default_factory=list)
-    pcm_chunk_ranges_ms: list[tuple[int, int]] = field(default_factory=list)
+    pcm_buffer: bytearray = field(default_factory=bytearray)
+    pcm_packet_ranges: list[dict[str, Any]] = field(default_factory=list)
+    input_ready: bool = False
+    output_ready: bool = False
+    output_queue: queue.Queue[dict[str, Any]] = field(default_factory=queue.Queue)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
@@ -118,6 +124,7 @@ class LiveTranscriptionManager:
             state=state_name,
             speed_mode=resolved_speed_mode,
             warning=warning,
+            pcm_sample_rate=sample_rate,
         )
 
         async with self._sessions_lock:
@@ -161,10 +168,25 @@ class LiveTranscriptionManager:
             raise LiveSessionNotFound(f'Live session not found: {session_id}')
         return session
 
-    @staticmethod
-    def _is_soft_chunk_decode_error(exc: Exception) -> bool:
-        msg = str(exc)
-        return 'EBML header parsing failed' in msg or 'Invalid data found when processing input' in msg
+    async def mark_input_ready(self, session_id: str) -> LiveSession:
+        session = await self._require_session(session_id)
+        session.input_ready = True
+        session.queue_depth = int(session.worker_busy) + session.waiting_requests
+        return session
+
+    async def mark_output_ready(self, session_id: str) -> LiveSession:
+        session = await self._require_session(session_id)
+        session.output_ready = True
+        session.queue_depth = int(session.worker_busy) + session.waiting_requests
+        return session
+
+    async def push_output_event(self, session_id: str, event: dict[str, Any]) -> None:
+        session = await self._require_session(session_id)
+        await asyncio.to_thread(session.output_queue.put, event)
+
+    async def next_output_event(self, session_id: str) -> dict[str, Any]:
+        session = await self._require_session(session_id)
+        return await asyncio.to_thread(session.output_queue.get)
 
     @staticmethod
     def _normalize_full_result(result: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str, float]:
@@ -199,55 +221,6 @@ class LiveTranscriptionManager:
         duration = float(result.get('duration', 0.0) or 0.0)
         return words, segments, language, duration
 
-    def resolve_decode_window_start_index(
-        self,
-        *,
-        session: LiveSession,
-        chunk_start_ms: int,
-        chunk_end_ms: int,
-        seq: int,
-    ) -> int:
-        chunks = session.accumulated_chunks
-        if not chunks:
-            return 0
-
-        if seq % FULL_RECONCILE_EVERY_N_CHUNKS == 0:
-            return 0
-
-        max_window_ms = (
-            SAFE_AUTO_MAX_WINDOW_MS
-            if session.speed_mode == LIVE_SPEED_MODE_SAFE_AUTO
-            else AGGRESSIVE_MAX_WINDOW_MS
-        )
-        chunk_span_ms = max(1, chunk_end_ms - chunk_start_ms)
-        window_span_ms = max_window_ms + WINDOW_OVERLAP_MS
-        window_chunk_count = max(1, int(window_span_ms / chunk_span_ms))
-        return max(0, len(chunks) - window_chunk_count)
-
-    def build_decode_window_blob(
-        self,
-        *,
-        session: LiveSession,
-        chunk_start_ms: int,
-        chunk_end_ms: int,
-        seq: int,
-    ) -> bytes:
-        chunks = session.accumulated_chunks
-        if not chunks:
-            return b''
-
-        start_index = self.resolve_decode_window_start_index(
-            session=session,
-            chunk_start_ms=chunk_start_ms,
-            chunk_end_ms=chunk_end_ms,
-            seq=seq,
-        )
-
-        tail = chunks[start_index:]
-        if start_index > 0:
-            return b''.join([chunks[0], *tail])
-        return b''.join(tail)
-
     def resolve_pcm_window_start_index(
         self,
         *,
@@ -256,22 +229,20 @@ class LiveTranscriptionManager:
         chunk_end_ms: int,
         seq: int,
     ) -> int:
-        chunks = session.pcm_chunks
-        if not chunks:
+        ranges = session.pcm_packet_ranges
+        if not ranges:
             return 0
-
         if seq % FULL_RECONCILE_EVERY_N_CHUNKS == 0:
             return 0
 
         max_window_ms = (
-            SAFE_AUTO_MAX_WINDOW_MS
-            if session.speed_mode == LIVE_SPEED_MODE_SAFE_AUTO
-            else AGGRESSIVE_MAX_WINDOW_MS
+            SAFE_AUTO_MAX_WINDOW_MS if session.speed_mode == LIVE_SPEED_MODE_SAFE_AUTO else AGGRESSIVE_MAX_WINDOW_MS
         )
-        chunk_span_ms = max(1, chunk_end_ms - chunk_start_ms)
-        window_span_ms = max_window_ms + WINDOW_OVERLAP_MS
-        window_chunk_count = max(1, int(window_span_ms / chunk_span_ms))
-        return max(0, len(chunks) - window_chunk_count)
+        target_start_ms = max(0, int(chunk_end_ms - (max_window_ms + WINDOW_OVERLAP_MS)))
+        for idx, packet in enumerate(ranges):
+            if int(packet['capture_end_ms']) >= target_start_ms:
+                return idx
+        return max(0, len(ranges) - 1)
 
     def build_pcm_window_blob(
         self,
@@ -281,16 +252,16 @@ class LiveTranscriptionManager:
         chunk_end_ms: int,
         seq: int,
     ) -> bytes:
-        if not session.pcm_chunks:
+        if not session.pcm_packet_ranges:
             return b''
-
         start_index = self.resolve_pcm_window_start_index(
             session=session,
             chunk_start_ms=chunk_start_ms,
             chunk_end_ms=chunk_end_ms,
             seq=seq,
         )
-        return b''.join(session.pcm_chunks[start_index:])
+        start_offset = int(session.pcm_packet_ranges[start_index]['byte_start'])
+        return bytes(session.pcm_buffer[start_offset:])
 
     @staticmethod
     def _shift_words(words: list[dict[str, Any]], offset_s: float) -> list[dict[str, Any]]:
@@ -334,41 +305,176 @@ class LiveTranscriptionManager:
             }
         ]
 
-    async def _transcribe_blob(self, *, blob: bytes, model_dir: Path, device: str) -> dict[str, Any]:
-        tmp_path: Path | None = None
+    async def _transcribe_pcm_window(self, *, model_dir: Path, pcm_bytes: bytes, sample_rate: int, device: str) -> dict[str, Any]:
+        with NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+            wav_path = Path(tmp.name)
         try:
-            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
-                tmp.write(blob)
-                tmp_path = Path(tmp.name)
-
+            write_pcm_to_wav(pcm_bytes, sample_rate, wav_path)
             loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(
-                None,
-                self._transcribe_callable,
-                model_dir,
-                tmp_path,
-                device,
-            )
+            return await loop.run_in_executor(None, transcribe_wav_file, model_dir, wav_path, device)
         finally:
-            if tmp_path and tmp_path.exists():
-                tmp_path.unlink(missing_ok=True)
+            wav_path.unlink(missing_ok=True)
 
-    async def _transcribe_pcm_window(self, *, model_dir: Path, wav_path: Path, device: str) -> dict[str, Any]:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, transcribe_wav_file, model_dir, wav_path, device)
+    async def ingest_pcm(
+        self,
+        *,
+        session_id: str,
+        seq: int,
+        capture_start_sample: int,
+        capture_end_sample: int,
+        capture_start_ms: float,
+        capture_end_ms: float,
+        sample_rate: int,
+        channels: int,
+        pcm_bytes: bytes,
+        model_dir: Path,
+        device: str,
+    ) -> dict[str, Any]:
+        session = await self._require_session(session_id)
 
-    async def _decode_blob_to_pcm(self, blob: bytes) -> tuple[bytes, int]:
-        tmp_path: Path | None = None
+        session.waiting_requests += 1
         try:
-            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp:
-                tmp.write(blob)
-                tmp_path = Path(tmp.name)
+            async with session.lock:
+                session.waiting_requests = max(0, session.waiting_requests - 1)
+                session.worker_busy = True
+                session.queue_depth = int(session.worker_busy) + session.waiting_requests
 
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, decode_webm_to_pcm, tmp_path)
+                if session.state not in {'prepared', 'live'}:
+                    raise LiveTransitionError(f'Cannot ingest pcm while session is {session.state}')
+                if seq != session.next_expected_seq:
+                    raise LiveSequenceError(
+                        f'PCM packet sequence must match next_expected_seq={session.next_expected_seq}: got {seq}'
+                    )
+                if channels != session.channels:
+                    raise LiveTransitionError(f'PCM packet channel mismatch: expected {session.channels}, got {channels}')
+
+                started = time.perf_counter()
+                if session.first_chunk_received_at is None:
+                    session.first_chunk_received_at = started
+
+                session.state = 'live'
+                session.pcm_sample_rate = sample_rate
+                byte_start = len(session.pcm_buffer)
+                session.pcm_buffer.extend(pcm_bytes)
+                byte_end = len(session.pcm_buffer)
+                session.pcm_packet_ranges.append(
+                    {
+                        'seq': seq,
+                        'capture_start_sample': capture_start_sample,
+                        'capture_end_sample': capture_end_sample,
+                        'capture_start_ms': int(capture_start_ms),
+                        'capture_end_ms': int(capture_end_ms),
+                        'byte_start': byte_start,
+                        'byte_end': byte_end,
+                    }
+                )
+                session.last_seq = seq
+                session.next_expected_seq = seq + 1
+
+                window_start_index = self.resolve_pcm_window_start_index(
+                    session=session,
+                    chunk_start_ms=int(capture_start_ms),
+                    chunk_end_ms=int(capture_end_ms),
+                    seq=seq,
+                )
+                window_packet = session.pcm_packet_ranges[window_start_index]
+                decode_window_start_ms = int(window_packet['capture_start_ms'])
+                decode_window_start_s = float(decode_window_start_ms) / 1000.0
+                pcm_window_blob = self.build_pcm_window_blob(
+                    session=session,
+                    chunk_start_ms=int(capture_start_ms),
+                    chunk_end_ms=int(capture_end_ms),
+                    seq=seq,
+                )
+
+                result = await self._transcribe_pcm_window(
+                    model_dir=model_dir,
+                    pcm_bytes=pcm_window_blob,
+                    sample_rate=sample_rate,
+                    device=device,
+                )
+                new_words, _new_segments, new_language, new_duration = self._normalize_full_result(result)
+                shifted_words = self._shift_words(new_words, decode_window_start_s)
+
+                replace_from_word_index = len(session.words)
+                if shifted_words:
+                    if window_start_index == 0:
+                        session.words = shifted_words
+                        replace_from_word_index = 0
+                    else:
+                        replace_from_s = float(shifted_words[0].get('start', decode_window_start_s))
+                        replace_from_word_index, session.words = self._merge_words(
+                            session.words,
+                            shifted_words,
+                            replace_from_s=replace_from_s,
+                        )
+
+                session.segments = self._rebuild_segments_from_words(session.words)
+                session.interim_text = ''
+                session.language = new_language
+                session.duration = max(
+                    session.duration,
+                    new_duration + decode_window_start_s,
+                    float(capture_end_ms) / 1000.0,
+                )
+
+                elapsed_ms = int((time.perf_counter() - started) * 1000)
+                session.chunk_latency_ms_samples.append(elapsed_ms)
+
+                emitted_at = time.perf_counter()
+                if session.first_result_emitted_at is None:
+                    session.first_result_emitted_at = emitted_at
+                    if session.first_chunk_received_at is not None:
+                        session.ttft_ms = int((emitted_at - session.first_chunk_received_at) * 1000)
+
+                update_gap_ms: int | None = None
+                if session.last_result_emitted_at is not None:
+                    update_gap_ms = int((emitted_at - session.last_result_emitted_at) * 1000)
+                    session.update_gap_ms_samples.append(update_gap_ms)
+                session.last_result_emitted_at = emitted_at
+
+                session.warning = None
+                session.error = None
+                session.queue_depth = int(session.worker_busy) + session.waiting_requests
+
+                patch_event = {
+                    'type': 'patch',
+                    'sessionId': session.id,
+                    'seq': seq,
+                    'interimText': session.interim_text,
+                    'finalized': {
+                        'mode': 'patch',
+                        'replaceFromWordIndex': replace_from_word_index,
+                        'words': session.words[replace_from_word_index:],
+                        'segments': session.segments,
+                    },
+                    'metrics': {
+                        'serverLatencyMs': elapsed_ms,
+                        'timeToFirstTokenMs': session.ttft_ms,
+                        'queueDepth': session.queue_depth,
+                        'workerBusy': session.worker_busy,
+                        'waitingRequests': session.waiting_requests,
+                        'updateGapMs': update_gap_ms,
+                        'speedMode': session.speed_mode,
+                    },
+                }
+                telemetry_event = {
+                    'type': 'telemetry',
+                    'sessionId': session.id,
+                    'queueDepth': session.queue_depth,
+                    'workerBusy': session.worker_busy,
+                    'waitingRequests': session.waiting_requests,
+                    'updateGapMs': update_gap_ms,
+                    'serverLatencyMs': elapsed_ms,
+                    'timeToFirstTokenMs': session.ttft_ms,
+                    'speedMode': session.speed_mode,
+                }
+                await self.push_output_event(session.id, patch_event)
+                await self.push_output_event(session.id, telemetry_event)
+                return patch_event
         finally:
-            if tmp_path and tmp_path.exists():
-                tmp_path.unlink(missing_ok=True)
+            session.worker_busy = False
+            session.queue_depth = int(session.worker_busy) + session.waiting_requests
 
     async def ingest_chunk(
         self,
@@ -383,215 +489,25 @@ class LiveTranscriptionManager:
         is_last: bool = False,
     ) -> dict[str, Any]:
         session = await self._require_session(session_id)
-
-        session.waiting_requests += 1
-        lock_acquired = False
-        try:
-            async with session.lock:
-                lock_acquired = True
-                session.waiting_requests = max(0, session.waiting_requests - 1)
-                session.worker_busy = True
-                if session.state != 'live':
-                    raise LiveTransitionError(f'Cannot ingest chunk while session is {session.state}')
-
-                if seq <= session.last_seq:
-                    raise LiveSequenceError(f'Chunk sequence must increase: got {seq}, last={session.last_seq}')
-
-                started = time.perf_counter()
-                if session.first_chunk_received_at is None:
-                    session.first_chunk_received_at = started
-
-                try:
-                    session.accumulated_chunks.append(audio_bytes)
-                    session.accumulated_chunk_ranges_ms.append((chunk_start_ms, chunk_end_ms))
-
-                    try:
-                        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as chunk_tmp:
-                            chunk_tmp.write(audio_bytes)
-                            chunk_path = Path(chunk_tmp.name)
-
-                        try:
-                            chunk_pcm, sample_rate = decode_webm_to_pcm(chunk_path)
-                        finally:
-                            chunk_path.unlink(missing_ok=True)
-
-                        session.pcm_sample_rate = sample_rate
-                        session.pcm_chunks.append(chunk_pcm)
-                        session.pcm_chunk_ranges_ms.append((chunk_start_ms, chunk_end_ms))
-                    except Exception as exc:
-                        if not self._is_soft_chunk_decode_error(exc):
-                            raise
-
-                        stitched_start_index = self.resolve_decode_window_start_index(
-                            session=session,
-                            chunk_start_ms=chunk_start_ms,
-                            chunk_end_ms=chunk_end_ms,
-                            seq=seq,
-                        )
-                        stitched_blob = self.build_decode_window_blob(
-                            session=session,
-                            chunk_start_ms=chunk_start_ms,
-                            chunk_end_ms=chunk_end_ms,
-                            seq=seq,
-                        )
-                        if not stitched_blob:
-                            raise
-
-                        stitched_pcm, sample_rate = await self._decode_blob_to_pcm(stitched_blob)
-                        stitched_start_ms = 0
-                        if stitched_start_index < len(session.accumulated_chunk_ranges_ms):
-                            stitched_start_ms = session.accumulated_chunk_ranges_ms[stitched_start_index][0]
-
-                        session.pcm_sample_rate = sample_rate
-                        session.pcm_chunks = [stitched_pcm]
-                        session.pcm_chunk_ranges_ms = [(stitched_start_ms, chunk_end_ms)]
-
-                    pcm_window_start_index = self.resolve_pcm_window_start_index(
-                        session=session,
-                        chunk_start_ms=chunk_start_ms,
-                        chunk_end_ms=chunk_end_ms,
-                        seq=seq,
-                    )
-                    pcm_window_blob = self.build_pcm_window_blob(
-                        session=session,
-                        chunk_start_ms=chunk_start_ms,
-                        chunk_end_ms=chunk_end_ms,
-                        seq=seq,
-                    )
-
-                    decode_window_start_ms = 0
-                    if pcm_window_start_index < len(session.pcm_chunk_ranges_ms):
-                        decode_window_start_ms = session.pcm_chunk_ranges_ms[pcm_window_start_index][0]
-                    decode_window_start_s = float(decode_window_start_ms) / 1000.0
-
-                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as wav_tmp:
-                        wav_path = Path(wav_tmp.name)
-                    try:
-                        write_pcm_to_wav(pcm_window_blob, session.pcm_sample_rate, wav_path)
-                        result = await self._transcribe_pcm_window(model_dir=model_dir, wav_path=wav_path, device=device)
-                    except Exception as exc:
-                        if pcm_window_start_index > 0 and self._is_soft_chunk_decode_error(exc):
-                            # fallback path: retry once with full history webm payload
-                            result = await self._transcribe_blob(
-                                blob=b''.join(session.accumulated_chunks),
-                                model_dir=model_dir,
-                                device=device,
-                            )
-                            decode_window_start_s = 0.0
-                            pcm_window_start_index = 0
-                        else:
-                            raise
-                    finally:
-                        wav_path.unlink(missing_ok=True)
-
-                    new_words, _new_segments, new_language, new_duration = self._normalize_full_result(result)
-                    shifted_words = self._shift_words(new_words, decode_window_start_s)
-
-                    replace_from_word_index = 0
-                    if shifted_words:
-                        if pcm_window_start_index == 0:
-                            session.words = shifted_words
-                            replace_from_word_index = 0
-                        else:
-                            replace_from_s = float(shifted_words[0].get('start', decode_window_start_s))
-                            replace_from_word_index, session.words = self._merge_words(
-                                session.words,
-                                shifted_words,
-                                replace_from_s=replace_from_s,
-                            )
-
-                    session.segments = self._rebuild_segments_from_words(session.words)
-                    session.interim_text = ''
-                    session.last_seq = seq
-                    session.language = new_language
-                    session.duration = max(
-                        session.duration,
-                        new_duration + decode_window_start_s,
-                        float(chunk_end_ms) / 1000.0,
-                    )
-                    if is_last:
-                        session.state = 'finalizing'
-
-                    elapsed_ms = int((time.perf_counter() - started) * 1000)
-                    session.chunk_latency_ms_samples.append(elapsed_ms)
-
-                    emitted_at = time.perf_counter()
-                    if session.first_result_emitted_at is None:
-                        session.first_result_emitted_at = emitted_at
-                        if session.first_chunk_received_at is not None:
-                            session.ttft_ms = int((emitted_at - session.first_chunk_received_at) * 1000)
-
-                    update_gap_ms: int | None = None
-                    if session.last_result_emitted_at is not None:
-                        update_gap_ms = int((emitted_at - session.last_result_emitted_at) * 1000)
-                        session.update_gap_ms_samples.append(update_gap_ms)
-                    session.last_result_emitted_at = emitted_at
-
-                    session.warning = None
-                    session.error = None
-                    session.queue_depth = int(session.worker_busy) + session.waiting_requests
-
-                    return {
-                        'sessionId': session.id,
-                        'seq': seq,
-                        'state': session.state if not is_last else 'finalizing',
-                        'interimText': session.interim_text,
-                        'finalized': {
-                            'mode': 'patch',
-                            'replaceFromWordIndex': replace_from_word_index,
-                            'words': session.words[replace_from_word_index:],
-                            'segments': session.segments,
-                        },
-                        'metrics': {
-                            'serverLatencyMs': elapsed_ms,
-                            'timeToFirstTokenMs': session.ttft_ms,
-                            'queueDepth': session.queue_depth,
-                            'workerBusy': session.worker_busy,
-                            'waitingRequests': session.waiting_requests,
-                            'updateGapMs': update_gap_ms,
-                            'speedMode': session.speed_mode,
-                        },
-                    }
-                except Exception as exc:
-                    if self._is_soft_chunk_decode_error(exc):
-                        session.warning = f'Live chunk processing warning: {exc}'
-                        session.error = None
-                        session.last_seq = seq
-                        elapsed_ms = int((time.perf_counter() - started) * 1000)
-                        session.chunk_latency_ms_samples.append(elapsed_ms)
-                        session.queue_depth = int(session.worker_busy) + session.waiting_requests
-                        return {
-                            'sessionId': session.id,
-                            'seq': seq,
-                            'state': session.state,
-                            'interimText': session.interim_text,
-                            'finalized': {
-                                'mode': 'patch',
-                                'replaceFromWordIndex': len(session.words),
-                                'words': [],
-                                'segments': session.segments,
-                            },
-                            'metrics': {
-                                'serverLatencyMs': elapsed_ms,
-                                'timeToFirstTokenMs': session.ttft_ms,
-                                'queueDepth': session.queue_depth,
-                                'workerBusy': session.worker_busy,
-                                'waitingRequests': session.waiting_requests,
-                                'updateGapMs': None,
-                                'speedMode': session.speed_mode,
-                            },
-                        }
-
-                    session.warning = f'Live chunk processing error: {exc}'
-                    session.error = str(exc)
-                    raise
-                finally:
-                    session.worker_busy = False
-                    session.queue_depth = int(session.worker_busy) + session.waiting_requests
-        finally:
-            if not lock_acquired:
-                session.waiting_requests = max(0, session.waiting_requests - 1)
-                session.queue_depth = int(session.worker_busy) + session.waiting_requests
+        capture_start_sample = int(chunk_start_ms * session.pcm_sample_rate / 1000)
+        capture_end_sample = int(chunk_end_ms * session.pcm_sample_rate / 1000)
+        result = await self.ingest_pcm(
+            session_id=session_id,
+            seq=seq,
+            capture_start_sample=capture_start_sample,
+            capture_end_sample=capture_end_sample,
+            capture_start_ms=float(chunk_start_ms),
+            capture_end_ms=float(chunk_end_ms),
+            sample_rate=session.pcm_sample_rate,
+            channels=session.channels,
+            pcm_bytes=audio_bytes,
+            model_dir=model_dir,
+            device=device,
+        )
+        if is_last:
+            session.state = 'finalizing'
+        result['state'] = session.state
+        return result
 
     async def pause_session(self, session_id: str, at_ms: int) -> dict[str, Any]:
         session = await self._require_session(session_id)
@@ -599,7 +515,10 @@ class LiveTranscriptionManager:
             if session.state != 'live':
                 raise LiveTransitionError(f'Cannot pause session while state is {session.state}')
             session.state = 'paused'
+            session._pause_started_at_ms = at_ms
             session.boundaries.append({'type': 'pause-start', 'atMs': at_ms})
+            event = {'type': 'state', 'sessionId': session.id, 'state': 'paused'}
+            await self.push_output_event(session.id, event)
             return {'sessionId': session.id, 'state': session.state}
 
     async def resume_session(self, session_id: str, at_ms: int) -> dict[str, Any]:
@@ -607,22 +526,28 @@ class LiveTranscriptionManager:
         async with session.lock:
             if session.state != 'paused':
                 raise LiveTransitionError(f'Cannot resume session while state is {session.state}')
+            if session._pause_started_at_ms is not None:
+                session.paused_spans.append({'startMs': session._pause_started_at_ms, 'endMs': at_ms})
+                session._pause_started_at_ms = None
             session.state = 'live'
             session.boundaries.append({'type': 'pause-end', 'atMs': at_ms})
+            event = {'type': 'state', 'sessionId': session.id, 'state': 'live'}
+            await self.push_output_event(session.id, event)
             return {'sessionId': session.id, 'state': session.state}
 
     async def stop_session(self, session_id: str, at_ms: int) -> dict[str, Any]:
         session = await self._require_session(session_id)
         async with session.lock:
-            if session.state not in {'live', 'paused', 'finalizing'}:
+            if session.state not in {'prepared', 'live', 'paused', 'finalizing'}:
                 raise LiveTransitionError(f'Cannot stop session while state is {session.state}')
-
+            if session.state == 'paused' and session._pause_started_at_ms is not None:
+                session.paused_spans.append({'startMs': session._pause_started_at_ms, 'endMs': at_ms})
+                session._pause_started_at_ms = None
             session.state = 'finalizing'
             session.interim_text = ''
             session.duration = max(session.duration, float(at_ms) / 1000.0)
             session.state = 'complete'
-
-            return {
+            payload = {
                 'words': session.words,
                 'segments': session.segments,
                 'language': session.language,
@@ -632,6 +557,19 @@ class LiveTranscriptionManager:
                     'state': 'complete',
                 },
             }
+            await self.push_output_event(
+                session.id,
+                {
+                    'type': 'complete',
+                    'sessionId': session.id,
+                    'state': 'complete',
+                    'words': session.words,
+                    'segments': session.segments,
+                    'language': session.language,
+                    'duration': round(session.duration, 3),
+                },
+            )
+            return payload
 
     async def status(self, session_id: str) -> dict[str, Any]:
         session = await self._require_session(session_id)
@@ -656,12 +594,8 @@ class LiveTranscriptionManager:
                     'lastChunkLatencyMs': last_chunk_latency_ms,
                     'workerBusy': session.worker_busy,
                     'waitingRequests': session.waiting_requests,
+                    'inputReady': session.input_ready,
+                    'outputReady': session.output_ready,
                 },
-                'targets.ttftP50Ms': TTFT_P50_TARGET_MS,
-                'targets.ttftP95Ms': TTFT_P95_TARGET_MS,
-                'targets.updateCadenceP50Ms': UPDATE_CADENCE_P50_TARGET_MS,
-                'targets.queueDepthP95': QUEUE_DEPTH_P95_TARGET,
-                'observed.ttftMs': session.ttft_ms,
-                'observed.lastChunkLatencyMs': last_chunk_latency_ms,
             },
         }
