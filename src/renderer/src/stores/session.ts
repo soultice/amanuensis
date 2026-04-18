@@ -125,13 +125,15 @@ export const useSessionStore = defineStore('session', {
             // New format: just the asset filename (e.g. "uuid.webm")
             recordingStore.audioBlobUrl = `asset://localhost/${p}`
             recordingStore.recordingState = 'stopped'
-            if (data.audioPath !== null && data.transcript === null) {
-              try {
-                const buffer = await window.api.readSessionAsset(id, data.audioPath)
-                recordingStore.audioBlob = new Blob([buffer], { type: 'audio/webm' })
+            try {
+              const buffer = await window.api.readSessionAsset(id, data.audioPath)
+              recordingStore.audioBlob = new Blob([buffer], { type: 'audio/webm' })
+              if (data.transcript === null) {
                 await transcriptStore.recoverTranscriptFromAudio(recordingStore.audioBlob)
-              } catch {
-                this.audioFileMissing = true
+              }
+            } catch {
+              this.audioFileMissing = true
+              if (!data.transcript) {
                 transcriptStore.error = 'Transcript missing for saved recording and audio could not be recovered automatically.'
                 transcriptStore.transcriptState = 'error'
               }
