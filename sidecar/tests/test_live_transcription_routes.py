@@ -5,7 +5,9 @@ import time
 from pathlib import Path
 import sys
 
+import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -108,6 +110,77 @@ def test_live_endpoints_contract(monkeypatch) -> None:
     status = client.get('/transcribe/live/status', params={'sessionId': data['sessionId']})
     assert status.status_code == 200
     assert set(['sessionId', 'state', 'lastSeq', 'queueDepth', 'warning', 'error']).issubset(status.json().keys())
+
+
+def test_live_prepare_returns_socket_contract_and_runtime_metadata(monkeypatch) -> None:
+    monkeypatch.setattr(
+        transcribe_routes,
+        'describe_runtime_provider',
+        lambda _device: {
+            'deviceMode': 'auto',
+            'runtimeProvider': 'CPUExecutionProvider',
+            'runtimeQuantization': 'default',
+            'runtimeFallbackUsed': False,
+            'availableProviders': ['CPUExecutionProvider'],
+        },
+    )
+    client = _client(monkeypatch)
+
+    response = client.post(
+        '/transcribe/live/prepare',
+        json={
+            'sampleRate': 16000,
+            'channels': 1,
+            'pcmEncoding': 'pcm_s16le',
+            'packetSamples': 2048,
+            'archiveMimeType': 'audio/webm;codecs=opus',
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['state'] == 'prepared'
+    assert payload['inputSocketPath'] == '/transcribe/live/input'
+    assert payload['outputSocketPath'] == '/transcribe/live/output'
+    assert payload['runtimeProvider'] == 'CPUExecutionProvider'
+    assert payload['runtimeQuantization'] == 'default'
+    assert payload['runtimeFallbackUsed'] is False
+
+
+def test_live_output_socket_emits_ready_event(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    response = client.post(
+        '/transcribe/live/prepare',
+        json={
+            'sampleRate': 16000,
+            'channels': 1,
+            'pcmEncoding': 'pcm_s16le',
+            'packetSamples': 2048,
+            'archiveMimeType': 'audio/webm;codecs=opus',
+        },
+    )
+    assert response.status_code == 200
+    session_id = response.json()['sessionId']
+
+    with client.websocket_connect(f'/transcribe/live/output?sessionId={session_id}') as websocket:
+        payload = websocket.receive_json()
+        assert payload == {
+            'type': 'ready',
+            'sessionId': session_id,
+            'state': 'ready',
+            'queueDepth': 0,
+            'workerBusy': False,
+            'waitingRequests': 0,
+        }
+
+
+def test_live_output_socket_requires_session_id(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    with pytest.raises(WebSocketDisconnect) as exc:
+        with client.websocket_connect('/transcribe/live/output'):
+            pass
+    assert exc.value.code == 1008
 
 
 def test_live_chunk_metrics_include_ttft_and_queue_depth(monkeypatch) -> None:
@@ -260,6 +333,8 @@ def test_live_start_returns_runtime_provider_metadata(monkeypatch) -> None:
         lambda _device: {
             'deviceMode': 'auto',
             'runtimeProvider': 'CPUExecutionProvider',
+            'runtimeQuantization': 'default',
+            'runtimeFallbackUsed': False,
             'availableProviders': ['CPUExecutionProvider'],
         },
     )
@@ -268,4 +343,30 @@ def test_live_start_returns_runtime_provider_metadata(monkeypatch) -> None:
     start = client.post('/transcribe/live/start', json={'sampleRate': 16000, 'channels': 1, 'mimeType': 'audio/webm'})
     assert start.status_code == 200
     payload = start.json()
-    assert set(['deviceMode', 'runtimeProvider', 'availableProviders']).issubset(payload.keys())
+    assert set(['deviceMode', 'runtimeProvider', 'runtimeQuantization', 'runtimeFallbackUsed', 'availableProviders']).issubset(payload.keys())
+
+
+def test_live_status_returns_runtime_provider_metadata(monkeypatch) -> None:
+    monkeypatch.setattr(
+        transcribe_routes,
+        'describe_runtime_provider',
+        lambda _device: {
+            'deviceMode': 'auto',
+            'runtimeProvider': 'CoreMLExecutionProvider',
+            'runtimeQuantization': 'int8',
+            'runtimeFallbackUsed': False,
+            'availableProviders': ['CoreMLExecutionProvider', 'CPUExecutionProvider'],
+        },
+    )
+    client = _client(monkeypatch)
+
+    start = client.post('/transcribe/live/start', json={'sampleRate': 16000, 'channels': 1, 'mimeType': 'audio/webm'})
+    assert start.status_code == 200
+    session_id = start.json()['sessionId']
+
+    status = client.get('/transcribe/live/status', params={'sessionId': session_id})
+    assert status.status_code == 200
+    payload = status.json()
+    assert payload['runtimeProvider'] == 'CoreMLExecutionProvider'
+    assert payload['runtimeQuantization'] == 'int8'
+    assert payload['runtimeFallbackUsed'] is False

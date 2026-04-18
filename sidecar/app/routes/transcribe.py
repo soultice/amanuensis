@@ -2,7 +2,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, WebSocket
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -30,6 +30,14 @@ class LiveStartRequest(BaseModel):
     channels: int
     mimeType: str
     sessionHint: str | None = None
+
+
+class LivePrepareRequest(BaseModel):
+    sampleRate: int
+    channels: int
+    pcmEncoding: str
+    packetSamples: int
+    archiveMimeType: str | None = None
 
 
 class LiveSessionControlRequest(BaseModel):
@@ -93,6 +101,41 @@ async def transcribe_audio(audio: UploadFile = File(...)):
                 tmp_path.unlink(missing_ok=True)
 
 
+@router.post('/live/prepare')
+async def live_prepare(req: LivePrepareRequest):
+    if state.live_transcription_manager is None:
+        raise HTTPException(status_code=503, detail='Live transcription manager not ready')
+
+    result = await state.live_transcription_manager.prepare_session(
+        sample_rate=req.sampleRate,
+        channels=req.channels,
+        mime_type=req.archiveMimeType or req.pcmEncoding,
+    )
+    result.update(
+        {
+            'state': 'prepared',
+            'inputSocketPath': '/transcribe/live/input',
+            'outputSocketPath': '/transcribe/live/output',
+        }
+    )
+    result.setdefault('speedMode', resolve_live_speed_mode())
+
+    warnings: list[str] = []
+    if result.get('warning'):
+        warnings.append(str(result['warning']))
+
+    runtime = describe_runtime_provider(state.transcription_device)
+    runtime_warning = runtime.pop('runtimeWarning', None)
+    if runtime_warning:
+        warnings.append(str(runtime_warning))
+    result.update(runtime)
+
+    if warnings:
+        result['warning'] = ' | '.join(warnings)
+
+    return JSONResponse(result)
+
+
 @router.post('/live/start')
 async def live_start(req: LiveStartRequest):
     if state.live_transcription_manager is None:
@@ -103,7 +146,6 @@ async def live_start(req: LiveStartRequest):
         mime_type=req.mimeType,
     )
     result.setdefault('speedMode', resolve_live_speed_mode())
-    result.update(describe_runtime_provider(state.transcription_device))
 
     warnings: list[str] = []
     if result.get('warning'):
@@ -119,6 +161,12 @@ async def live_start(req: LiveStartRequest):
             defaults['warmupMs'] = warmup.get('warmupMs')
     except Exception as exc:
         warnings.append(f'Live warmup warning: {exc}')
+
+    runtime = describe_runtime_provider(state.transcription_device)
+    runtime_warning = runtime.pop('runtimeWarning', None)
+    if runtime_warning:
+        warnings.append(str(runtime_warning))
+    result.update(runtime)
 
     if warnings:
         result['warning'] = ' | '.join(warnings)
@@ -202,12 +250,69 @@ async def live_stop(req: LiveSessionControlRequest):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@router.websocket('/live/input')
+async def live_input_socket(websocket: WebSocket):
+    session_id = websocket.query_params.get('sessionId')
+    if not session_id:
+        await websocket.close(code=1008, reason='sessionId query parameter is required')
+        return
+
+    if state.live_transcription_manager is None:
+        await websocket.close(code=1011, reason='Live transcription manager not ready')
+        return
+
+    try:
+        await state.live_transcription_manager._require_session(session_id)
+    except LiveSessionNotFound:
+        await websocket.close(code=1008, reason=f'Live session not found: {session_id}')
+        return
+
+    await websocket.accept()
+    await websocket.close(code=1000)
+
+
+@router.websocket('/live/output')
+async def live_output_socket(websocket: WebSocket):
+    session_id = websocket.query_params.get('sessionId')
+    if not session_id:
+        await websocket.close(code=1008, reason='sessionId query parameter is required')
+        return
+
+    if state.live_transcription_manager is None:
+        await websocket.close(code=1011, reason='Live transcription manager not ready')
+        return
+
+    try:
+        session = await state.live_transcription_manager._require_session(session_id)
+    except LiveSessionNotFound:
+        await websocket.close(code=1008, reason=f'Live session not found: {session_id}')
+        return
+
+    await websocket.accept()
+    await websocket.send_json(
+        {
+            'type': 'ready',
+            'sessionId': session.id,
+            'state': 'ready',
+            'queueDepth': session.queue_depth,
+            'workerBusy': session.worker_busy,
+            'waitingRequests': session.waiting_requests,
+        }
+    )
+    await websocket.close(code=1000)
+
+
 @router.get('/live/status')
 async def live_status(sessionId: str):
     if state.live_transcription_manager is None:
         raise HTTPException(status_code=503, detail='Live transcription manager not ready')
     try:
         result = await state.live_transcription_manager.status(sessionId)
+        runtime = describe_runtime_provider(state.transcription_device)
+        runtime_warning = runtime.pop('runtimeWarning', None)
+        if runtime_warning and not result.get('warning'):
+            result['warning'] = str(runtime_warning)
+        result.update(runtime)
         return JSONResponse(result)
     except LiveSessionNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

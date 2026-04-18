@@ -91,7 +91,14 @@ class LiveTranscriptionManager:
         self._sessions: dict[str, LiveSession] = {}
         self._sessions_lock = asyncio.Lock()
 
-    async def start_session(self, sample_rate: int, channels: int, mime_type: str) -> dict[str, Any]:
+    async def _create_session_payload(
+        self,
+        *,
+        sample_rate: int,
+        channels: int,
+        mime_type: str,
+        state_name: str,
+    ) -> dict[str, Any]:
         session_id = str(uuid.uuid4())
         configured_speed_mode = (os.getenv(LIVE_SPEED_MODE_ENV_VAR) or '').strip().lower()
         resolved_speed_mode = resolve_live_speed_mode()
@@ -108,6 +115,7 @@ class LiveTranscriptionManager:
             channels=channels,
             mime_type=mime_type,
             created_at=time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            state=state_name,
             speed_mode=resolved_speed_mode,
             warning=warning,
         )
@@ -129,6 +137,22 @@ class LiveTranscriptionManager:
         if warning:
             payload['warning'] = warning
         return payload
+
+    async def start_session(self, sample_rate: int, channels: int, mime_type: str) -> dict[str, Any]:
+        return await self._create_session_payload(
+            sample_rate=sample_rate,
+            channels=channels,
+            mime_type=mime_type,
+            state_name='live',
+        )
+
+    async def prepare_session(self, sample_rate: int, channels: int, mime_type: str) -> dict[str, Any]:
+        return await self._create_session_payload(
+            sample_rate=sample_rate,
+            channels=channels,
+            mime_type=mime_type,
+            state_name='prepared',
+        )
 
     async def _require_session(self, session_id: str) -> LiveSession:
         async with self._sessions_lock:
