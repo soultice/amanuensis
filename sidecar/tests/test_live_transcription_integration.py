@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import queue
 import sys
+import threading
+import time
 
 import asyncio
 
@@ -23,10 +26,19 @@ class _FakeModelManager:
         return Path('.')
 
 
-def _install_fake_pipeline(monkeypatch) -> None:
+def _install_fake_pipeline(
+    monkeypatch,
+    *,
+    block_on_transcribe: threading.Event | None = None,
+    entered: threading.Event | None = None,
+) -> None:
     monkeypatch.setattr(live_service, 'write_pcm_to_wav', lambda pcm, _sample_rate, wav_path: wav_path.write_bytes(pcm))
 
     def _fake_transcribe(_model_dir: Path, wav_path: Path, _device: str) -> dict:
+        if entered is not None:
+            entered.set()
+        if block_on_transcribe is not None:
+            block_on_transcribe.wait(timeout=2)
         text = wav_path.read_bytes().decode(errors='ignore').strip()
         tokens = [token for token in text.split(' ') if token]
         if not tokens:
@@ -292,5 +304,110 @@ def test_live_stop_contract_unchanged_with_metrics_enabled(monkeypatch) -> None:
     assert stop.status_code == 200
     payload = stop.json()
     assert set(['words', 'segments', 'language', 'duration']).issubset(payload.keys())
+
+
+def test_latest_only_scheduler_skips_superseded_intermediate_windows(monkeypatch) -> None:
+    app = create_app('/tmp/amanuensis-test', device='cpu')
+    state.model_manager = _FakeModelManager()
+
+    entered = threading.Event()
+    unblock = threading.Event()
+    _install_fake_pipeline(monkeypatch, block_on_transcribe=unblock, entered=entered)
+    client = TestClient(app)
+
+    prepare = client.post(
+        '/transcribe/live/prepare',
+        json={
+            'sampleRate': 16000,
+            'channels': 1,
+            'pcmEncoding': 'pcm_s16le',
+            'packetSamples': 2048,
+            'archiveMimeType': 'audio/webm;codecs=opus',
+        },
+    )
+    assert prepare.status_code == 200
+    session_id = prepare.json()['sessionId']
+
+    websocket = _FakeInputWebSocket(
+        session_id,
+        [
+            {'type': 'start', 'sessionId': session_id},
+            {
+                'type': 'pcm',
+                'sessionId': session_id,
+                'seq': 1,
+                'captureStartSample': 0,
+                'captureEndSample': 2048,
+                'captureStartMs': 0,
+                'captureEndMs': 128,
+                'sampleRate': 16000,
+                'channels': 1,
+                'bytes': 5,
+                'pcmEncoding': 'pcm_s16le',
+            },
+            {
+                'type': 'pcm',
+                'sessionId': session_id,
+                'seq': 2,
+                'captureStartSample': 2048,
+                'captureEndSample': 4096,
+                'captureStartMs': 128,
+                'captureEndMs': 256,
+                'sampleRate': 16000,
+                'channels': 1,
+                'bytes': 10,
+                'pcmEncoding': 'pcm_s16le',
+            },
+            {'type': 'pause', 'sessionId': session_id, 'atMs': 300},
+            {'type': 'resume', 'sessionId': session_id, 'atMs': 450},
+            {
+                'type': 'pcm',
+                'sessionId': session_id,
+                'seq': 3,
+                'captureStartSample': 4096,
+                'captureEndSample': 6144,
+                'captureStartMs': 256,
+                'captureEndMs': 384,
+                'sampleRate': 16000,
+                'channels': 1,
+                'bytes': 16,
+                'pcmEncoding': 'pcm_s16le',
+            },
+            {'type': 'stop', 'sessionId': session_id, 'atMs': 600},
+        ],
+        [b'alpha', b'alpha beta', b'alpha beta gamma'],
+    )
+
+    thread = threading.Thread(target=lambda: asyncio.run(transcribe_routes.live_input_socket(websocket)))
+    thread.start()
+    assert entered.wait(timeout=1)
+    time.sleep(0.05)
+    unblock.set()
+    thread.join(timeout=2)
+    assert not thread.is_alive()
+
+    session = state.live_transcription_manager._sessions[session_id]
+    events: list[dict] = []
+    while True:
+        try:
+            events.append(session.output_queue.get_nowait())
+        except queue.Empty:
+            break
+
+    assert [event['type'] for event in events].count('patch') == 1
+    patch = next(event for event in events if event['type'] == 'patch')
+    telemetry = next(event for event in events if event['type'] == 'telemetry')
+    complete = next(event for event in events if event['type'] == 'complete')
+
+    assert patch['seq'] == 3
+    assert patch['finalized']['mode'] == 'patch'
+    assert 'replaceFromWordIndex' in patch['finalized']
+    assert patch['metrics']['supersededResultsDropped'] >= 1
+    assert telemetry['pendingLatest'] is False
+    assert telemetry['latestSeqAccepted'] == 3
+    assert telemetry['latestSeqProcessed'] == 3
+    assert telemetry['supersededResultsDropped'] >= 1
+    assert set(['words', 'segments', 'language', 'duration']).issubset(complete.keys())
+    assert session.paused_spans == [{'startMs': 300, 'endMs': 450}]
 
 

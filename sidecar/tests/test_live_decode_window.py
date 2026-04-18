@@ -8,6 +8,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.services.live_transcription import LiveSession, LiveTranscriptionManager
 
 
+def _append_pcm_packet(session: LiveSession, *, seq: int, start_ms: int, end_ms: int, payload: bytes) -> None:
+    byte_start = len(session.pcm_buffer)
+    session.pcm_buffer.extend(payload)
+    session.pcm_packet_ranges.append(
+        {
+            'seq': seq,
+            'capture_start_ms': start_ms,
+            'capture_end_ms': end_ms,
+            'byte_start': byte_start,
+            'byte_end': len(session.pcm_buffer),
+        }
+    )
+
+
 def _manager() -> LiveTranscriptionManager:
     return LiveTranscriptionManager(lambda _model_dir, _audio_path, _device: {})
 
@@ -74,3 +88,41 @@ def test_build_pcm_window_blob_limits_to_bounded_tail() -> None:
 
     assert blob.endswith(b'C19')
     assert len(blob) < len(bytes(session.pcm_buffer))
+
+
+def test_schedule_latest_snapshot_overwrites_previous_pending_snapshot() -> None:
+    manager = _manager()
+    session = _session()
+
+    _append_pcm_packet(session, seq=1, start_ms=0, end_ms=500, payload=b'alpha')
+    _append_pcm_packet(session, seq=2, start_ms=500, end_ms=1000, payload=b'beta')
+    _append_pcm_packet(session, seq=3, start_ms=1000, end_ms=1500, payload=b'gamma')
+
+    manager._schedule_latest_snapshot(session=session, seq=2, capture_start_ms=500, capture_end_ms=1000, sample_rate=16000)
+    manager._schedule_latest_snapshot(session=session, seq=3, capture_start_ms=1000, capture_end_ms=1500, sample_rate=16000)
+
+    assert session.pending_latest is not None
+    assert session.pending_latest.seq == 3
+    assert session.latest_seq_accepted == 3
+    assert bytes(session.pcm_buffer) == b'alphabetagamma'
+    assert [packet['seq'] for packet in session.pcm_packet_ranges] == [1, 2, 3]
+
+
+def test_stale_snapshot_result_is_dropped_before_merge() -> None:
+    manager = _manager()
+    session = _session()
+
+    stale_snapshot = manager._schedule_latest_snapshot(
+        session=session,
+        seq=2,
+        capture_start_ms=500,
+        capture_end_ms=1000,
+        sample_rate=16000,
+    )
+    manager._schedule_latest_snapshot(session=session, seq=3, capture_start_ms=1000, capture_end_ms=1500, sample_rate=16000)
+
+    assert manager._mark_superseded_result_if_needed(session, stale_snapshot) is True
+    assert session.superseded_results_dropped == 1
+    assert session.latest_seq_processed == 0
+    assert session.pending_latest is not None
+    assert session.pending_latest.seq == 3
