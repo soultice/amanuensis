@@ -332,6 +332,11 @@ async def live_input_socket(websocket: WebSocket):
                 device=state.transcription_device,
             )
     except WebSocketDisconnect:
+        try:
+            session = await state.live_transcription_manager._require_session(session_id)
+            await asyncio.wait_for(state.live_transcription_manager._wait_until_session_idle(session), timeout=1)
+        except Exception:
+            pass
         return
     except Exception as exc:
         await _emit_fatal(str(exc))
