@@ -123,6 +123,7 @@ import { useRecordingStore } from '../stores/recording'
 import { useSessionStore } from '../stores/session'
 import { useTranscriptStore } from '../stores/transcript'
 import { useThemeStore } from '../stores/theme'
+import { usePlaybackStore } from '../stores/playback'
 import LevelMeter from './LevelMeter.vue'
 
 const emit = defineEmits<{ closeSession: [] }>()
@@ -131,6 +132,7 @@ const recordingStore = useRecordingStore()
 const sessionStore = useSessionStore()
 const transcriptStore = useTranscriptStore()
 const themeStore = useThemeStore()
+const playbackStore = usePlaybackStore()
 const activeStream = ref<MediaStream | null>(null)
 
 // Auto-save progress bar (Phase 12)
@@ -227,8 +229,7 @@ async function startRecording(): Promise<void> {
 
 function playRecording(): void {
   if (!recordingStore.audioBlobUrl) return
-  const audio = new Audio(recordingStore.audioBlobUrl)
-  audio.play().catch((err) => console.error('Playback error:', err))
+  playbackStore.togglePlayPause()
 }
 </script>
 

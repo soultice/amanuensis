@@ -112,31 +112,67 @@ const { waveSurfer, isReady } = useWaveSurfer({
   },
 })
 
+function findWaveSurferShadowRoot(): ShadowRoot | null {
+  const container = containerRef.value
+  if (!container) return null
+
+  const directHost = container.firstElementChild as HTMLElement | null
+  if (directHost?.shadowRoot) return directHost.shadowRoot
+
+  for (const node of Array.from(container.querySelectorAll('*'))) {
+    const el = node as HTMLElement
+    if (el.shadowRoot) return el.shadowRoot
+  }
+
+  return null
+}
+
+function suppressWaveSurferHorizontalProgress(): void {
+  const root = findWaveSurferShadowRoot()
+  if (!root) return
+
+  const progressEl = root.querySelector('[part="progress"]') as HTMLElement | null
+  const cursorEl = root.querySelector('[part="cursor"]') as HTMLElement | null
+  const canvasesEl = root.querySelector('[part="canvases"]') as HTMLElement | null
+
+  if (progressEl) {
+    progressEl.style.display = 'none'
+    progressEl.style.width = '0'
+    progressEl.style.maxWidth = '0'
+    progressEl.style.opacity = '0'
+    progressEl.style.visibility = 'hidden'
+    progressEl.style.pointerEvents = 'none'
+  }
+  if (cursorEl) {
+    cursorEl.style.display = 'none'
+    cursorEl.style.width = '0'
+    cursorEl.style.opacity = '0'
+    cursorEl.style.visibility = 'hidden'
+    cursorEl.style.pointerEvents = 'none'
+  }
+  if (canvasesEl) {
+    canvasesEl.style.clipPath = 'none'
+  }
+}
+
 // Register WaveSurfer instance and wire events into playback store
 watch(waveSurfer, (ws) => {
   if (!ws) return
 
-  // Inject CSS into WaveSurfer's shadow root to hide the built-in progress
-  // overlay and cursor line. Vue scoped ::part() selectors don't reach the
-  // shadow DOM because the shadow host div is created by WaveSurfer's JS (not
-  // the component template), so Vue never stamps its data-v-xxxx attribute on
-  // it — the scoped selector silently fails. Injecting a <style> directly into
-  // the shadow root bypasses Vue scoping entirely.
-  const shadowHost = containerRef.value?.firstElementChild
-  if (shadowHost?.shadowRoot) {
-    const style = document.createElement('style')
-    style.textContent = '.progress,.cursor{display:none!important}.canvases{clip-path:none!important}'
-    shadowHost.shadowRoot.prepend(style)
-  }
+  suppressWaveSurferHorizontalProgress()
 
   playbackStore.registerWaveSurfer(ws)
 
   ws.on('ready', (dur: number) => {
+    suppressWaveSurferHorizontalProgress()
     playbackStore.onWaveSurferReady(dur)
   })
   ws.on('timeupdate', (t: number) => {
+    suppressWaveSurferHorizontalProgress()
     playbackStore.onTimeUpdate(t)
   })
+  ws.on('redraw', () => suppressWaveSurferHorizontalProgress())
+  ws.on('redrawcomplete', () => suppressWaveSurferHorizontalProgress())
   ws.on('play', () => playbackStore.onPlayPause(true))
   ws.on('pause', () => playbackStore.onPlayPause(false))
   ws.on('finish', () => playbackStore.onPlayPause(false))
@@ -178,6 +214,7 @@ watch(
   (url) => {
     if (url && waveSurfer.value) {
       waveSurfer.value.load(url)
+      requestAnimationFrame(() => suppressWaveSurferHorizontalProgress())
     }
   }
 )
@@ -268,9 +305,9 @@ onUnmounted(() => {
      total vertical distance (temporal alignment via scroll sync). */
   width: 100%;
 }
-/* Note: .progress and .cursor inside WaveSurfer's shadow root are hidden via
-   JS style injection in watch(waveSurfer) — ::part() in scoped CSS doesn't
-   reach the shadow host because it lacks the Vue data-v attribute. */
+/* Note: WaveSurfer's built-in progress overlay/cursor are suppressed from JS
+   by mutating the actual shadow-root elements each redraw/timeupdate, because
+   its default left→right progress conflicts with this top→bottom waveform. */
 .waveform-panel__cursor {
   /* Horizontal position-indicator line: moves top→bottom as audio plays.
      The panel is transcriptScrollHeight tall so top:N% = N% through the audio.
