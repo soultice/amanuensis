@@ -12,8 +12,14 @@
     <span v-if="showLiveTelemetry" class="status-bar__item status-bar__telemetry">
       Pipeline: Worker {{ transcriptStore.liveWorkerBusy ? 'Busy' : 'Idle' }} · Waiting {{ transcriptStore.liveWaitingRequests }}
     </span>
+    <span v-if="showLiveTelemetry && schedulerLabel" class="status-bar__item status-bar__telemetry">
+      Scheduler: {{ schedulerLabel }}
+    </span>
+    <span v-if="showLiveTelemetry && runtimeLabel" class="status-bar__item status-bar__telemetry">
+      Runtime: {{ runtimeLabel }}
+    </span>
     <span v-if="showLiveTelemetry" class="status-bar__item status-bar__telemetry">
-      Producer: {{ recordingStore.liveUploadInFlight ? 'Upload busy' : 'Upload idle' }} · Buffer {{ recordingStore.liveBufferedMs }}ms / {{ recordingStore.liveBufferedBytes }}B
+      Producer: Pending {{ recordingStore._livePendingChunks.length }} chunk(s) · Buffer {{ recordingStore._livePendingBytes }}B
     </span>
     <span v-if="transcriptStore.liveWarning" class="status-bar__warning">
       Live transcription failed — recording continues
@@ -37,6 +43,18 @@ const showLiveTelemetry = computed(
 const ttftLabel = computed(() => {
   if (transcriptStore.liveTimeToFirstTokenMs === null) return '—'
   return `${Math.round(transcriptStore.liveTimeToFirstTokenMs)}ms`
+})
+
+const schedulerLabel = computed(() => {
+  const pending = transcriptStore.livePendingLatest ? 'yes' : 'no'
+  return `Pending ${pending} · Latest ${transcriptStore.liveLatestSeqProcessed}/${transcriptStore.liveLatestSeqAccepted} · Dropped ${transcriptStore.liveSupersededResultsDropped}`
+})
+
+const runtimeLabel = computed(() => {
+  if (!transcriptStore.liveRuntimeProvider) return ''
+  const quant = transcriptStore.liveRuntimeQuantization ?? 'default'
+  const fallback = transcriptStore.liveRuntimeFallbackUsed ? ' · fallback' : ''
+  return `${transcriptStore.liveRuntimeProvider} · ${quant}${fallback}`
 })
 </script>
 

@@ -340,7 +340,14 @@ def test_live_chunk_metrics_include_ttft_and_queue_depth(monkeypatch) -> None:
     assert 'serverLatencyMs' in metrics
     assert 'timeToFirstTokenMs' in metrics
     assert 'queueDepth' in metrics
+    assert 'workerBusy' in metrics
+    assert 'waitingRequests' in metrics
     assert 'updateGapMs' in metrics
+    assert 'speedMode' in metrics
+    assert 'pendingLatest' in metrics
+    assert 'latestSeqAccepted' in metrics
+    assert 'latestSeqProcessed' in metrics
+    assert 'supersededResultsDropped' in metrics
 
 
 def test_live_status_reports_latency_targets(monkeypatch) -> None:
@@ -429,6 +436,14 @@ def test_live_status_reports_worker_busy_and_waiting_requests(monkeypatch) -> No
     assert payload['metrics']['observed']['workerBusy'] is True
     assert payload['metrics']['observed']['waitingRequests'] >= 1
     assert payload['queueDepth'] >= 1
+    assert 'pendingLatest' in payload
+    assert 'latestSeqAccepted' in payload
+    assert 'latestSeqProcessed' in payload
+    assert 'supersededResultsDropped' in payload
+    assert 'pendingLatest' in payload['metrics']['observed']
+    assert 'latestSeqAccepted' in payload['metrics']['observed']
+    assert 'latestSeqProcessed' in payload['metrics']['observed']
+    assert 'supersededResultsDropped' in payload['metrics']['observed']
 
     unblock.set()
     t1.join(timeout=2)
