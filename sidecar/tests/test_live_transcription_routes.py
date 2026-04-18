@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 import time
 from pathlib import Path
@@ -41,7 +42,6 @@ def _fake_words(seed: str = 'hello world') -> dict:
 
 
 def _install_fake_live_pipeline(monkeypatch, *, block_on_transcribe: threading.Event | None = None, entered: threading.Event | None = None) -> None:
-    monkeypatch.setattr(live_service, 'decode_webm_to_pcm', lambda audio_path: (audio_path.read_bytes() or b'x', 16000))
     monkeypatch.setattr(live_service, 'write_pcm_to_wav', lambda pcm, _sample_rate, wav_path: wav_path.write_bytes(pcm))
 
     def _fake_transcribe(_model_dir: Path, wav_path: Path, _device: str) -> dict:
@@ -146,6 +146,23 @@ def test_live_prepare_returns_socket_contract_and_runtime_metadata(monkeypatch) 
     assert payload['runtimeFallbackUsed'] is False
 
 
+class _FakeOutputWebSocket:
+    def __init__(self, session_id: str | None) -> None:
+        self.query_params = {} if session_id is None else {'sessionId': session_id}
+        self.sent: list[dict] = []
+        self.accepted = False
+        self.closed_code: int | None = None
+
+    async def accept(self) -> None:
+        self.accepted = True
+
+    async def send_json(self, payload: dict) -> None:
+        self.sent.append(payload)
+
+    async def close(self, code: int = 1000, reason: str | None = None) -> None:
+        self.closed_code = code
+
+
 def test_live_output_socket_emits_ready_event(monkeypatch) -> None:
     client = _client(monkeypatch)
 
@@ -161,26 +178,142 @@ def test_live_output_socket_emits_ready_event(monkeypatch) -> None:
     )
     assert response.status_code == 200
     session_id = response.json()['sessionId']
+    asyncio.run(
+        state.live_transcription_manager.push_output_event(
+            session_id,
+            {
+                'type': 'complete',
+                'sessionId': session_id,
+                'state': 'complete',
+                'words': [],
+                'segments': [],
+                'language': '',
+                'duration': 0.0,
+            },
+        )
+    )
 
-    with client.websocket_connect(f'/transcribe/live/output?sessionId={session_id}') as websocket:
-        payload = websocket.receive_json()
-        assert payload == {
-            'type': 'ready',
-            'sessionId': session_id,
-            'state': 'ready',
-            'queueDepth': 0,
-            'workerBusy': False,
-            'waitingRequests': 0,
-        }
+    websocket = _FakeOutputWebSocket(session_id)
+    asyncio.run(transcribe_routes.live_output_socket(websocket))
+    assert websocket.sent[0] == {
+        'type': 'ready',
+        'sessionId': session_id,
+        'state': 'ready',
+        'queueDepth': 0,
+        'workerBusy': False,
+        'waitingRequests': 0,
+    }
 
 
 def test_live_output_socket_requires_session_id(monkeypatch) -> None:
+    _client(monkeypatch)
+    websocket = _FakeOutputWebSocket(None)
+    asyncio.run(transcribe_routes.live_output_socket(websocket))
+    assert websocket.closed_code == 1008
+
+
+class _FakeInputWebSocket:
+    def __init__(self, session_id: str, json_messages: list[dict], byte_messages: list[bytes]) -> None:
+        self.query_params = {'sessionId': session_id}
+        self._json_messages = list(json_messages)
+        self._byte_messages = list(byte_messages)
+        self.accepted = False
+        self.closed = False
+
+    async def accept(self) -> None:
+        self.accepted = True
+
+    async def receive_json(self) -> dict:
+        if not self._json_messages:
+            raise WebSocketDisconnect(code=1000)
+        return self._json_messages.pop(0)
+
+    async def receive_bytes(self) -> bytes:
+        if not self._byte_messages:
+            raise WebSocketDisconnect(code=1000)
+        return self._byte_messages.pop(0)
+
+    async def close(self, code: int = 1000, reason: str | None = None) -> None:
+        self.closed = True
+
+
+def test_live_input_socket_receives_metadata_then_receive_bytes(monkeypatch) -> None:
     client = _client(monkeypatch)
 
-    with pytest.raises(WebSocketDisconnect) as exc:
-        with client.websocket_connect('/transcribe/live/output'):
-            pass
-    assert exc.value.code == 1008
+    prepare = client.post(
+        '/transcribe/live/prepare',
+        json={
+            'sampleRate': 16000,
+            'channels': 1,
+            'pcmEncoding': 'pcm_s16le',
+            'packetSamples': 2048,
+            'archiveMimeType': 'audio/webm;codecs=opus',
+        },
+    )
+    session_id = prepare.json()['sessionId']
+    websocket = _FakeInputWebSocket(
+        session_id,
+        [
+            {
+                'type': 'pcm',
+                'sessionId': session_id,
+                'seq': 1,
+                'captureStartSample': 0,
+                'captureEndSample': 2048,
+                'captureStartMs': 0,
+                'captureEndMs': 128,
+                'sampleRate': 16000,
+                'channels': 1,
+                'bytes': 10,
+                'pcmEncoding': 'pcm_s16le',
+            }
+        ],
+        [b'hello worl'],
+    )
+
+    asyncio.run(transcribe_routes.live_input_socket(websocket))
+    payload = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    assert payload['type'] == 'patch'
+
+
+def test_live_input_socket_emits_fatal_error_on_malformed_pcm_size(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    prepare = client.post(
+        '/transcribe/live/prepare',
+        json={
+            'sampleRate': 16000,
+            'channels': 1,
+            'pcmEncoding': 'pcm_s16le',
+            'packetSamples': 2048,
+            'archiveMimeType': 'audio/webm;codecs=opus',
+        },
+    )
+    session_id = prepare.json()['sessionId']
+    websocket = _FakeInputWebSocket(
+        session_id,
+        [
+            {
+                'type': 'pcm',
+                'sessionId': session_id,
+                'seq': 1,
+                'captureStartSample': 0,
+                'captureEndSample': 2048,
+                'captureStartMs': 0,
+                'captureEndMs': 128,
+                'sampleRate': 16000,
+                'channels': 1,
+                'bytes': 99,
+                'pcmEncoding': 'pcm_s16le',
+            }
+        ],
+        [b'too-short'],
+    )
+
+    asyncio.run(transcribe_routes.live_input_socket(websocket))
+    payload = asyncio.run(state.live_transcription_manager.next_output_event(session_id))
+    assert payload['type'] == 'error'
+    assert payload['fatal'] is True
 
 
 def test_live_chunk_metrics_include_ttft_and_queue_depth(monkeypatch) -> None:
