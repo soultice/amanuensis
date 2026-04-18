@@ -177,6 +177,7 @@ export const useRecordingStore = defineStore('recording', {
           this.audioBlobUrl = URL.createObjectURL(blob)
           this.durationMs = this._currentElapsedMs()
           this.recordingState = 'stopped'
+          this._recorder = null
           void this._teardownLiveCapture()
           this._stream?.getTracks().forEach((t) => t.stop())
           this._stream = null
@@ -260,6 +261,8 @@ export const useRecordingStore = defineStore('recording', {
       this._pausedMs = 0
       this._pauseStart = 0
       this._chunks = []
+      this._recorder = null
+      this._stream = null
       this._livePendingChunks = []
       this._livePendingBytes = 0
       this._liveChunkAccepted = false
