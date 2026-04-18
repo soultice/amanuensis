@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
 import { useSidecarStore } from './sidecar'
+import { LiveTranscriptionStream } from '../lib/live-transcription-stream'
 import type {
-  LiveChunkResponse,
-  LiveStartResponse,
-  LiveStatusResponse,
-  LiveStopResponse,
+  LiveOutputEvent,
+  LivePatchEvent,
+  LivePcmPacketMetadata,
+  LivePrepareRequest,
+  LiveTelemetryEvent,
 } from '../types/live-transcript'
 
 export interface Word {
@@ -36,6 +38,9 @@ export const useTranscriptStore = defineStore('transcript', {
     liveSessionId: null as string | null,
     liveWarning: null as string | null,
     liveFeatureAvailable: null as boolean | null,
+    liveRuntimeProvider: null as string | null,
+    liveRuntimeQuantization: null as string | null,
+    liveRuntimeFallbackUsed: false as boolean,
     liveTimeToFirstTokenMs: null as number | null,
     liveServerLatencyMs: null as number | null,
     liveQueueDepth: 0,
@@ -45,12 +50,15 @@ export const useTranscriptStore = defineStore('transcript', {
     liveSpeedMode: 'safe_auto' as 'safe_auto' | 'aggressive_internal',
     boundaryMarkers: [] as Array<{ type: 'pause-start' | 'pause-end'; atMs: number }>,
     error: null as string | null,
-    _seq: 0,
     _pollInterval: null as ReturnType<typeof setInterval> | null,
-    _livePollInterval: null as ReturnType<typeof setInterval> | null,
-    _liveStartPromise: null as Promise<boolean> | null,
     _recoveryAttempted: false,
     _runId: 0,
+    _liveStream: null as LiveTranscriptionStream | null,
+    _liveCaptureSampleRate: 16000 as number,
+    _livePacketSamples: 2048 as number,
+    _liveSeq: 0 as number,
+    _liveCompletePromise: null as Promise<boolean> | null,
+    _resolveLiveComplete: null as ((value: boolean) => void) | null,
   }),
 
   getters: {
@@ -65,12 +73,105 @@ export const useTranscriptStore = defineStore('transcript', {
       return this._runId === runId
     },
 
+    _createLiveCompletionPromise(): void {
+      this._liveCompletePromise = new Promise<boolean>((resolve) => {
+        this._resolveLiveComplete = resolve
+      })
+    },
+
+    _resolveLiveCompletion(value: boolean): void {
+      this._resolveLiveComplete?.(value)
+      this._resolveLiveComplete = null
+      this._liveCompletePromise = null
+    },
+
+    _applyPatch(event: LivePatchEvent): void {
+      const replaceFromWordIndex = Math.max(0, event.finalized.replaceFromWordIndex ?? 0)
+      this.words = [...this.words.slice(0, replaceFromWordIndex), ...event.finalized.words]
+      this.segments = event.finalized.segments
+      const last = this.words[this.words.length - 1]
+      if (last) this.duration = Math.max(this.duration, last.end)
+      this.interimText = event.interimText ?? ''
+      this._applyTelemetry(event.metrics)
+    },
+
+    _applyTelemetry(metrics?: Partial<LiveTelemetryEvent> | null): void {
+      if (!metrics) return
+      this.liveServerLatencyMs = (metrics.serverLatencyMs as number | undefined) ?? this.liveServerLatencyMs
+      this.liveTimeToFirstTokenMs = (metrics.timeToFirstTokenMs as number | undefined) ?? this.liveTimeToFirstTokenMs
+      this.liveQueueDepth = (metrics.queueDepth as number | undefined) ?? this.liveQueueDepth
+      this.liveWorkerBusy = (metrics.workerBusy as boolean | undefined) ?? this.liveWorkerBusy
+      this.liveWaitingRequests = (metrics.waitingRequests as number | undefined) ?? this.liveWaitingRequests
+      this.liveUpdateGapMs = (metrics.updateGapMs as number | undefined) ?? this.liveUpdateGapMs
+      this.liveSpeedMode =
+        ((metrics.speedMode as 'safe_auto' | 'aggressive_internal' | undefined) ?? this.liveSpeedMode)
+    },
+
+    _handleLiveEvent(event: LiveOutputEvent, runId: number): void {
+      if (!this._isCurrentRun(runId)) return
+
+      switch (event.type) {
+        case 'ready':
+          this.liveQueueDepth = event.queueDepth
+          this.liveWorkerBusy = event.workerBusy
+          this.liveWaitingRequests = event.waitingRequests
+          this.transcriptState = 'live'
+          break
+        case 'patch':
+          this.transcriptState = 'live'
+          this._applyPatch(event)
+          break
+        case 'telemetry':
+          this._applyTelemetry(event)
+          break
+        case 'state':
+          if (event.state === 'finalizing') {
+            this.transcriptState = 'finalizing'
+          }
+          break
+        case 'complete':
+          this.words = event.words ?? []
+          this.segments = event.segments ?? []
+          this.language = event.language ?? ''
+          this.duration = event.duration ?? this.duration
+          this.interimText = ''
+          this.error = null
+          this.transcriptState = this.words.length > 0 ? 'complete' : 'empty'
+          this._resolveLiveCompletion(true)
+          this._closeLiveStream()
+          break
+        case 'error':
+          this.error = event.message
+          this.liveWarning = event.message
+          this.transcriptState = 'error'
+          this._resolveLiveCompletion(false)
+          this._closeLiveStream()
+          break
+      }
+    },
+
+    _handleLiveFatal(message: string, runId: number): void {
+      if (!this._isCurrentRun(runId)) return
+      this.error = message
+      this.liveWarning = message
+      this.transcriptState = 'error'
+      this._resolveLiveCompletion(false)
+      this._closeLiveStream()
+    },
+
+    _closeLiveStream(): void {
+      this._liveStream?.close()
+      this._liveStream = null
+      this.liveSessionId = null
+    },
+
     invalidatePendingWork(): void {
       this._runId += 1
       this._stopPolling()
-      this._stopLiveStatusPolling()
+      this._closeLiveStream()
+      this._resolveLiveComplete = null
+      this._liveCompletePromise = null
       this.liveSessionId = null
-      this._liveStartPromise = null
     },
 
     _resetForNewTranscript(options?: { preserveDiagnostics?: boolean; preserveFeatureAvailability?: boolean }): void {
@@ -87,7 +188,9 @@ export const useTranscriptStore = defineStore('transcript', {
         this.liveFeatureAvailable = null
       }
       this.liveSessionId = null
-      this._liveStartPromise = null
+      this.liveRuntimeProvider = null
+      this.liveRuntimeQuantization = null
+      this.liveRuntimeFallbackUsed = false
       this.liveTimeToFirstTokenMs = null
       this.liveServerLatencyMs = null
       this.liveQueueDepth = 0
@@ -96,8 +199,11 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveUpdateGapMs = null
       this.liveSpeedMode = 'safe_auto'
       this.boundaryMarkers = []
-      this._seq = 0
+      this._liveSeq = 0
       this._recoveryAttempted = false
+      this._closeLiveStream()
+      this._resolveLiveComplete = null
+      this._liveCompletePromise = null
     },
 
     async recoverTranscriptFromAudio(audioBlob: Blob): Promise<void> {
@@ -159,252 +265,106 @@ export const useTranscriptStore = defineStore('transcript', {
       }
     },
 
-    async startLiveSession(): Promise<void> {
+    async prepareLiveStream(params: {
+      sampleRate: number
+      channels: number
+      archiveMimeType: string | null
+      packetSamples?: number
+    }): Promise<void> {
       const sidecarStore = useSidecarStore()
       if (!sidecarStore.port) {
-        this.liveWarning = 'Sidecar not ready for live transcription'
-        return
-      }
-
-      if (this.liveFeatureAvailable === false) {
-        this.liveWarning = 'Live transcription unavailable in running sidecar build (restart app or rebuild sidecar). Falling back to full transcript recovery from recorded audio.'
-        return
-      }
-
-      if (this._liveStartPromise) {
-        await this._liveStartPromise
-        return
+        throw new Error('Sidecar not ready for live transcription')
       }
 
       const runId = this._runId + 1
       this._runId = runId
       this._resetForNewTranscript()
-      this.transcriptState = 'live'
+      this.transcriptState = 'transcribing'
+      this._createLiveCompletionPromise()
+      this._liveCaptureSampleRate = params.sampleRate
+      this._livePacketSamples = params.packetSamples ?? 2048
 
-      const startPromise = (async (): Promise<boolean> => {
-        try {
-          const res = await fetch(`http://localhost:${sidecarStore.port}/transcribe/live/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sampleRate: 44100,
-              channels: 1,
-              mimeType: 'audio/webm;codecs=opus',
-            }),
-          })
-
-          if (!res.ok) {
-            const detail = await res.text()
-            if (!this._isCurrentRun(runId)) return false
-            if (res.status === 404) {
-              this.liveFeatureAvailable = false
-              this.liveWarning = 'Live transcription unavailable in running sidecar build (restart app or rebuild sidecar). Falling back to full transcript recovery from recorded audio.'
-              return false
-            }
-            throw new Error(`Live start failed (${res.status}): ${detail}`)
-          }
-
-          const data = (await res.json()) as LiveStartResponse
-          if (!this._isCurrentRun(runId)) return false
-          this.liveSessionId = data.sessionId
-          this.liveFeatureAvailable = true
-          this.liveSpeedMode = data.speedMode ?? 'safe_auto'
-          if (data.warning) this.liveWarning = data.warning
-          this._seq = 0
-          return true
-        } catch (err) {
-          if (!this._isCurrentRun(runId)) return false
-          this.liveWarning = `Live transcription failed — recording continues (${String(err)}). Falling back to full transcript recovery from recorded audio.`
-          return false
-        }
-      })()
-
-      this._liveStartPromise = startPromise
+      const stream = new LiveTranscriptionStream()
+      this._liveStream = stream
 
       try {
-        await startPromise
-      } finally {
-        if (this._isCurrentRun(runId) && this._liveStartPromise === startPromise) {
-          this._liveStartPromise = null
+        const request: LivePrepareRequest = {
+          sampleRate: params.sampleRate,
+          channels: params.channels,
+          pcmEncoding: 'pcm_s16le',
+          packetSamples: params.packetSamples ?? 2048,
+          archiveMimeType: params.archiveMimeType,
         }
+        const prepared = await stream.prepare(sidecarStore.port, request)
+        if (!this._isCurrentRun(runId)) return
+
+        this.liveSessionId = prepared.sessionId
+        this.liveFeatureAvailable = true
+        this.liveRuntimeProvider = prepared.runtimeProvider ?? null
+        this.liveRuntimeQuantization = prepared.runtimeQuantization ?? null
+        this.liveRuntimeFallbackUsed = prepared.runtimeFallbackUsed ?? false
+        this.liveSpeedMode = prepared.speedMode ?? 'safe_auto'
+        this.liveWarning = prepared.warning ?? null
+
+        await stream.connect(sidecarStore.port, prepared, {
+          onEvent: (event) => this._handleLiveEvent(event, runId),
+          onFatal: (message) => this._handleLiveFatal(message, runId),
+        })
+
+        if (!this._isCurrentRun(runId)) return
+        stream.sendControl({ type: 'start', sessionId: prepared.sessionId })
+        this.transcriptState = 'live'
+      } catch (error) {
+        this._handleLiveFatal(String(error), runId)
+        throw error
       }
     },
 
-    async pushLiveChunk(audioChunk: Blob, chunkStartMs: number, chunkEndMs: number, isLast = false): Promise<boolean> {
-      const sidecarStore = useSidecarStore()
-      if (!sidecarStore.port || !this.liveSessionId) return false
-
-      const runId = this._runId
-      const liveSessionId = this.liveSessionId
-      this._seq += 1
-
-      const formData = new FormData()
-      formData.append('sessionId', liveSessionId)
-      formData.append('seq', String(this._seq))
-      formData.append('chunkStartMs', String(Math.max(0, Math.floor(chunkStartMs))))
-      formData.append('chunkEndMs', String(Math.max(0, Math.floor(chunkEndMs))))
-      formData.append('isLast', isLast ? 'true' : 'false')
-      formData.append('audio', audioChunk, `chunk-${this._seq}.webm`)
-
-      try {
-        const res = await fetch(`http://localhost:${sidecarStore.port}/transcribe/live/chunk`, {
-          method: 'POST',
-          body: formData,
-        })
-
-        if (!res.ok) {
-          const detail = await res.text()
-          throw new Error(`Live chunk failed (${res.status}): ${detail}`)
-        }
-
-        const data = (await res.json()) as LiveChunkResponse
-        if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return false
-
-        const replaceFromWordIndex = Math.max(0, data.finalized.replaceFromWordIndex ?? 0)
-        this.words = [...this.words.slice(0, replaceFromWordIndex), ...data.finalized.words]
-        this.segments = data.finalized.segments
-        const last = this.words[this.words.length - 1]
-        if (last) this.duration = Math.max(this.duration, last.end)
-
-        this.liveServerLatencyMs = data.metrics?.serverLatencyMs ?? this.liveServerLatencyMs
-        this.liveTimeToFirstTokenMs = data.metrics?.timeToFirstTokenMs ?? this.liveTimeToFirstTokenMs
-        this.liveQueueDepth = data.metrics?.queueDepth ?? this.liveQueueDepth
-        this.liveWorkerBusy = data.metrics?.workerBusy ?? this.liveWorkerBusy
-        this.liveWaitingRequests = data.metrics?.waitingRequests ?? this.liveWaitingRequests
-        this.liveUpdateGapMs = data.metrics?.updateGapMs ?? this.liveUpdateGapMs
-        this.liveSpeedMode = data.metrics?.speedMode ?? this.liveSpeedMode
-
-        this.interimText = data.interimText ?? ''
-        return true
-      } catch (err) {
-        if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return false
-        this.liveWarning = `Live transcription failed — recording continues (${String(err)})`
-        return false
+    sendLivePcmPacket(packet: { pcm: ArrayBuffer; frameCount: number; endFrame: number }): void {
+      if (!this._liveStream || !this.liveSessionId) {
+        throw new Error('Live stream is not prepared')
       }
+      this._liveSeq += 1
+      const metadata: LivePcmPacketMetadata = {
+        type: 'pcm',
+        sessionId: this.liveSessionId,
+        seq: this._liveSeq,
+        captureStartSample: packet.endFrame - packet.frameCount,
+        captureEndSample: packet.endFrame,
+        captureStartMs: ((packet.endFrame - packet.frameCount) / this._liveCaptureSampleRate) * 1000,
+        captureEndMs: (packet.endFrame / this._liveCaptureSampleRate) * 1000,
+        sampleRate: this._liveCaptureSampleRate,
+        channels: 1,
+        bytes: packet.pcm.byteLength,
+        pcmEncoding: 'pcm_s16le',
+      }
+      this._liveStream.sendPcm(metadata, packet.pcm)
     },
 
     async pauseLiveSession(atMs: number): Promise<void> {
-      const sidecarStore = useSidecarStore()
-      if (!sidecarStore.port || !this.liveSessionId) return
-
-      const runId = this._runId
-      const liveSessionId = this.liveSessionId
-
-      try {
-        const res = await fetch(`http://localhost:${sidecarStore.port}/transcribe/live/pause`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: liveSessionId, atMs: Math.max(0, Math.floor(atMs)) }),
-        })
-        if (!res.ok) throw new Error(await res.text())
-        if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return
-        this.boundaryMarkers.push({ type: 'pause-start', atMs })
-      } catch (err) {
-        if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return
-        this.liveWarning = `Live transcription failed — recording continues (${String(err)})`
-      }
+      if (!this._liveStream || !this.liveSessionId) return
+      this.boundaryMarkers.push({ type: 'pause-start', atMs })
+      this._liveStream.sendControl({ type: 'pause', sessionId: this.liveSessionId, atMs: Math.max(0, Math.floor(atMs)) })
     },
 
     async resumeLiveSession(atMs: number): Promise<void> {
-      const sidecarStore = useSidecarStore()
-      if (!sidecarStore.port || !this.liveSessionId) return
-
-      const runId = this._runId
-      const liveSessionId = this.liveSessionId
-
-      try {
-        const res = await fetch(`http://localhost:${sidecarStore.port}/transcribe/live/resume`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: liveSessionId, atMs: Math.max(0, Math.floor(atMs)) }),
-        })
-        if (!res.ok) throw new Error(await res.text())
-        if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return
-        this.boundaryMarkers.push({ type: 'pause-end', atMs })
-      } catch (err) {
-        if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return
-        this.liveWarning = `Live transcription failed — recording continues (${String(err)})`
-      }
+      if (!this._liveStream || !this.liveSessionId) return
+      this.boundaryMarkers.push({ type: 'pause-end', atMs })
+      this._liveStream.sendControl({ type: 'resume', sessionId: this.liveSessionId, atMs: Math.max(0, Math.floor(atMs)) })
     },
 
     async stopLiveSession(atMs: number): Promise<boolean> {
-      const sidecarStore = useSidecarStore()
-      if (!sidecarStore.port) return false
-
-      const runId = this._runId
-      if (!this.liveSessionId && this._liveStartPromise) {
-        await this._liveStartPromise
-      }
-      if (!this._isCurrentRun(runId) || !this.liveSessionId) return false
-
-      const liveSessionId = this.liveSessionId
+      if (!this._liveStream || !this.liveSessionId) return false
       this.transcriptState = 'finalizing'
-
-      try {
-        const res = await fetch(`http://localhost:${sidecarStore.port}/transcribe/live/stop`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: liveSessionId, atMs: Math.max(0, Math.floor(atMs)) }),
-        })
-
-        if (!res.ok) {
-          const detail = await res.text()
-          throw new Error(`Live stop failed (${res.status}): ${detail}`)
-        }
-
-        const data = (await res.json()) as LiveStopResponse
-        if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return false
-        this.words = data.words ?? []
-        this.segments = data.segments ?? []
-        this.language = data.language ?? ''
-        this.duration = data.duration ?? atMs / 1000
-        this.interimText = ''
-        this.error = null
-        this.transcriptState = this.words.length > 0 ? 'complete' : 'empty'
-        return true
-      } catch (err) {
-        if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return false
-        this.liveWarning = `Live transcription failed — recording continues (${String(err)}). Falling back to full transcript recovery from recorded audio.`
-        this.transcriptState = this.words.length > 0 ? 'complete' : 'error'
-        this.error = String(err)
-        return false
-      } finally {
-        if (this._isCurrentRun(runId) && this.liveSessionId === liveSessionId) {
-          this.liveSessionId = null
-          this._stopLiveStatusPolling()
-        }
+      if (!this._liveCompletePromise) {
+        this._createLiveCompletionPromise()
       }
-    },
-
-    _startLiveStatusPolling(port: number): void {
-      this._stopLiveStatusPolling()
-      const runId = this._runId
-      this._livePollInterval = setInterval(async () => {
-        if (!this._isCurrentRun(runId) || !this.liveSessionId) return
-        const liveSessionId = this.liveSessionId
-        try {
-          const res = await fetch(`http://localhost:${port}/transcribe/live/status?sessionId=${encodeURIComponent(liveSessionId)}`)
-          if (!res.ok || !this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return
-          const data = (await res.json()) as LiveStatusResponse
-          if (!this._isCurrentRun(runId) || this.liveSessionId !== liveSessionId) return
-          if (data.warning) this.liveWarning = data.warning
-          if (data.error) this.error = data.error
-          this.liveQueueDepth = data.queueDepth ?? this.liveQueueDepth
-          this.liveWorkerBusy = data.metrics?.observed?.workerBusy ?? this.liveWorkerBusy
-          this.liveWaitingRequests = data.metrics?.observed?.waitingRequests ?? this.liveWaitingRequests
-          this.liveTimeToFirstTokenMs = data.metrics?.observed?.ttftMs ?? this.liveTimeToFirstTokenMs
-          this.liveServerLatencyMs = data.metrics?.observed?.lastChunkLatencyMs ?? this.liveServerLatencyMs
-        } catch {
-          // sidecar may not be reachable
-        }
-      }, 250)
-    },
-
-    _stopLiveStatusPolling(): void {
-      if (this._livePollInterval !== null) {
-        clearInterval(this._livePollInterval)
-        this._livePollInterval = null
+      this._liveStream.sendControl({ type: 'stop', sessionId: this.liveSessionId, atMs: Math.max(0, Math.floor(atMs)) })
+      const complete = await this._liveCompletePromise!
+      if (!complete) {
+        this._closeLiveStream()
       }
+      return complete
     },
 
     _startPolling(port: number): void {
@@ -428,7 +388,6 @@ export const useTranscriptStore = defineStore('transcript', {
     reset(): void {
       this._runId += 1
       this._stopPolling()
-      this._stopLiveStatusPolling()
       this.transcriptState = 'empty'
       this.words = []
       this.segments = []
@@ -438,6 +397,9 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveSessionId = null
       this.liveWarning = null
       this.liveFeatureAvailable = null
+      this.liveRuntimeProvider = null
+      this.liveRuntimeQuantization = null
+      this.liveRuntimeFallbackUsed = false
       this.liveTimeToFirstTokenMs = null
       this.liveServerLatencyMs = null
       this.liveQueueDepth = 0
@@ -447,9 +409,13 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveSpeedMode = 'safe_auto'
       this.boundaryMarkers = []
       this.error = null
-      this._seq = 0
-      this._liveStartPromise = null
       this._recoveryAttempted = false
+      this._liveCaptureSampleRate = 16000
+      this._livePacketSamples = 2048
+      this._liveSeq = 0
+      this._closeLiveStream()
+      this._resolveLiveComplete = null
+      this._liveCompletePromise = null
     },
   },
 })

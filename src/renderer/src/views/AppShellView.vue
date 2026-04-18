@@ -24,11 +24,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRecordingStore } from '../stores/recording'
 import { useTranscriptStore } from '../stores/transcript'
 import { useSessionStore } from '../stores/session'
-import { useSidecarStore } from '../stores/sidecar'
 import AppToolbar from '../components/AppToolbar.vue'
 import WaveformPanel from '../components/WaveformPanel.vue'
 import TranscriptPanel from '../components/TranscriptPanel.vue'
@@ -38,7 +37,6 @@ import AppStatusBar from '../components/AppStatusBar.vue'
 const recordingStore = useRecordingStore()
 const transcriptStore = useTranscriptStore()
 const sessionStore = useSessionStore()
-const sidecarStore = useSidecarStore()
 
 // Scroll sync: waveform height = transcript scrollable content height,
 // waveform scrolls in lockstep with transcript so temporal positions align.
@@ -86,26 +84,6 @@ onUnmounted(() => {
   sessionStore.unregisterSaveOnClose()
   contentResizeObserver?.disconnect()
 })
-
-watch(
-  () => recordingStore.recordingState,
-  async (next, prev) => {
-    if (next === 'recording' && prev !== 'paused') {
-      await transcriptStore.startLiveSession()
-      if (
-        sidecarStore.port !== null &&
-        recordingStore.recordingState === 'recording' &&
-        transcriptStore.liveSessionId
-      ) {
-        transcriptStore._startLiveStatusPolling(sidecarStore.port)
-      }
-    }
-
-    if (next === 'stopped' || next === 'idle') {
-      transcriptStore._stopLiveStatusPolling()
-    }
-  },
-)
 
 async function handleCloseSession(): Promise<void> {
   if (recordingStore.isActive || transcriptStore.isLive || transcriptStore.isTranscribing) return

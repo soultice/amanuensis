@@ -1,45 +1,13 @@
 import { defineStore } from 'pinia'
 import { markRaw } from 'vue'
 import { useTranscriptStore } from './transcript'
+import livePcmCaptureWorkletUrl from '../audio/live-pcm-capture.worklet.ts?url'
 
 export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopped'
 
-const LIVE_FLUSH_WINDOW_MS_INITIAL = 250
-const LIVE_FLUSH_WINDOW_MS_MIN = 150
-const LIVE_FLUSH_WINDOW_MS_MAX = 700
-const LIVE_FLUSH_BACKPRESSURE_QUEUE_DEPTH = 2
-const LIVE_FLUSH_MIN_BYTES = 4 * 1024
-
-function computeAdaptiveFlushWindowMs(
-  serverLatencyMs: number | null,
-  queueDepth: number,
-  speedMode: 'safe_auto' | 'aggressive_internal',
-  firstTokenSeen: boolean,
-): number {
-  if (!firstTokenSeen) {
-    return LIVE_FLUSH_WINDOW_MS_INITIAL
-  }
-
-  let nextWindow = LIVE_FLUSH_WINDOW_MS_INITIAL
-
-  if (speedMode === 'safe_auto') {
-    if (queueDepth >= LIVE_FLUSH_BACKPRESSURE_QUEUE_DEPTH || (serverLatencyMs !== null && serverLatencyMs > 900)) {
-      nextWindow = 650
-    } else if (queueDepth <= 1 && serverLatencyMs !== null && serverLatencyMs <= 600) {
-      nextWindow = 200
-    } else {
-      nextWindow = 400
-    }
-  } else {
-    if (queueDepth === 0 && serverLatencyMs !== null && serverLatencyMs <= 700) {
-      nextWindow = 150
-    } else {
-      nextWindow = 500
-    }
-  }
-
-  return Math.max(LIVE_FLUSH_WINDOW_MS_MIN, Math.min(nextWindow, LIVE_FLUSH_WINDOW_MS_MAX))
-}
+const LIVE_PCM_SAMPLE_RATE = 16000
+const LIVE_PCM_CHANNELS = 1
+const LIVE_PCM_PACKET_SAMPLES = 2048
 
 export const useRecordingStore = defineStore('recording', {
   state: () => ({
@@ -51,17 +19,18 @@ export const useRecordingStore = defineStore('recording', {
     levelBars: new Array(12).fill(0) as number[],
     durationMs: 0,
     error: null as string | null,
-    // Internal — managed directly, not deeply reactive
     _recorder: null as MediaRecorder | null,
     _stream: null as MediaStream | null,
     _chunks: [] as BlobPart[],
     _startTime: 0,
     _pausedMs: 0,
     _pauseStart: 0,
-    _lastChunkEndMs: 0,
-    _livePendingChunks: [] as Blob[],
-    _livePendingBytes: 0,
-    _liveBatchStartMs: 0,
+    _audioContext: null as AudioContext | null,
+    _mediaSourceNode: null as MediaStreamAudioSourceNode | null,
+    _pcmNode: null as AudioWorkletNode | null,
+    _silentGainNode: null as GainNode | null,
+    _livePendingChunks: [] as ArrayBuffer[],
+    _livePendingBytes: 0 as number,
     _liveChunkAccepted: false,
   }),
 
@@ -96,37 +65,25 @@ export const useRecordingStore = defineStore('recording', {
       return Math.max(0, now - this._startTime - this._pausedMs - pausedNow)
     },
 
-    async _flushLiveChunks(force = false): Promise<void> {
-      const transcriptStore = useTranscriptStore()
-      if (!transcriptStore.liveSessionId || this._livePendingChunks.length === 0) return
-
-      const nowMs = this._currentElapsedMs()
-      const bufferedMs = Math.max(0, nowMs - this._liveBatchStartMs)
-      const firstTokenSeen = transcriptStore.liveTimeToFirstTokenMs !== null
-      const adaptiveWindowMs = computeAdaptiveFlushWindowMs(
-        transcriptStore.liveServerLatencyMs,
-        transcriptStore.liveQueueDepth,
-        transcriptStore.liveSpeedMode,
-        firstTokenSeen,
-      )
-      const shouldFlush = force || bufferedMs >= adaptiveWindowMs || this._livePendingBytes >= LIVE_FLUSH_MIN_BYTES
-      if (!shouldFlush) return
-
-      const chunkStartMs = this._liveBatchStartMs
-      const chunkEndMs = nowMs
-      const combined = new Blob(this._livePendingChunks, { type: 'audio/webm' })
-
+    async _teardownLiveCapture(): Promise<void> {
+      this._pcmNode?.port.close()
+      this._pcmNode?.disconnect()
+      this._mediaSourceNode?.disconnect()
+      this._silentGainNode?.disconnect()
+      if (this._audioContext) {
+        await this._audioContext.close().catch(() => undefined)
+      }
+      this._pcmNode = null
+      this._mediaSourceNode = null
+      this._silentGainNode = null
+      this._audioContext = null
       this._livePendingChunks = []
       this._livePendingBytes = 0
-      this._liveBatchStartMs = chunkEndMs
-      this._lastChunkEndMs = chunkEndMs
-
-      const accepted = await transcriptStore.pushLiveChunk(combined, chunkStartMs, chunkEndMs, false)
-      this._liveChunkAccepted = this._liveChunkAccepted || accepted
     },
 
     async startRecording(): Promise<void> {
       if (this.recordingState === 'recording') return
+
       this.error = null
       this.audioBlob = null
       if (this.audioBlobUrl) {
@@ -136,80 +93,115 @@ export const useRecordingStore = defineStore('recording', {
       this._chunks = []
       this._pausedMs = 0
       this._pauseStart = 0
-      this._lastChunkEndMs = 0
       this._livePendingChunks = []
       this._livePendingBytes = 0
-      this._liveBatchStartMs = 0
       this._liveChunkAccepted = false
 
+      const transcriptStore = useTranscriptStore()
+      let stream: MediaStream | null = null
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             deviceId: this.selectedDeviceId ? { exact: this.selectedDeviceId } : undefined,
-            sampleRate: 44100,
-            channelCount: 1,
+            sampleRate: LIVE_PCM_SAMPLE_RATE,
+            channelCount: LIVE_PCM_CHANNELS,
           },
         })
         this._stream = markRaw(stream)
 
+        const audioContext = new AudioContext({
+          latencyHint: 'interactive',
+          sampleRate: LIVE_PCM_SAMPLE_RATE,
+        })
+        this._audioContext = markRaw(audioContext)
+        await audioContext.resume()
+        await audioContext.audioWorklet.addModule(livePcmCaptureWorkletUrl)
+
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
           : 'audio/webm'
-        const recorder = new MediaRecorder(stream, { mimeType })
-        this._recorder = markRaw(recorder)
 
-        recorder.ondataavailable = (e: BlobEvent) => {
-          if (e.data.size <= 0) return
-          this._chunks.push(e.data)
+        await transcriptStore.prepareLiveStream({
+          sampleRate: audioContext.sampleRate,
+          channels: LIVE_PCM_CHANNELS,
+          archiveMimeType: mimeType,
+          packetSamples: LIVE_PCM_PACKET_SAMPLES,
+        })
 
-          if (this._liveBatchStartMs === 0) {
-            this._liveBatchStartMs = this._lastChunkEndMs
+        const mediaSource = audioContext.createMediaStreamSource(stream)
+        const pcmNode = new AudioWorkletNode(audioContext, 'live-pcm-capture', {
+          processorOptions: { packetSamples: LIVE_PCM_PACKET_SAMPLES },
+        })
+        const silentGain = audioContext.createGain()
+        silentGain.gain.value = 0
+        mediaSource.connect(pcmNode)
+        pcmNode.connect(silentGain)
+        silentGain.connect(audioContext.destination)
+
+        pcmNode.port.onmessage = (event: MessageEvent<{ type: string; frameCount: number; endFrame: number; pcm: ArrayBuffer }>) => {
+          if (this.recordingState !== 'recording') return
+          const payload = event.data
+          if (!payload || payload.type !== 'pcm-batch') return
+          this._livePendingChunks.push(payload.pcm)
+          this._livePendingBytes += payload.pcm.byteLength
+          try {
+            transcriptStore.sendLivePcmPacket({
+              pcm: payload.pcm,
+              frameCount: payload.frameCount,
+              endFrame: payload.endFrame,
+            })
+            this._liveChunkAccepted = true
+          } catch (error) {
+            this.error = String(error)
+            void this.stopRecording()
+          } finally {
+            this._livePendingChunks.shift()
+            this._livePendingBytes = Math.max(0, this._livePendingBytes - payload.pcm.byteLength)
           }
-          this._livePendingChunks.push(e.data)
-          this._livePendingBytes += e.data.size
-          void this._flushLiveChunks(false)
         }
 
+        this._mediaSourceNode = markRaw(mediaSource)
+        this._pcmNode = markRaw(pcmNode)
+        this._silentGainNode = markRaw(silentGain)
+
+        const recorder = new MediaRecorder(stream, { mimeType })
+        this._recorder = markRaw(recorder)
+        recorder.ondataavailable = (e: BlobEvent) => {
+          if (e.data.size > 0) {
+            this._chunks.push(e.data)
+          }
+        }
         recorder.onstop = () => {
-          const blob = new Blob(this._chunks, { type: 'audio/webm' })
+          const blob = new Blob(this._chunks, { type: mimeType })
           this.audioBlob = blob
           this.audioBlobUrl = URL.createObjectURL(blob)
           this.durationMs = this._currentElapsedMs()
           this.recordingState = 'stopped'
+          void this._teardownLiveCapture()
           this._stream?.getTracks().forEach((t) => t.stop())
           this._stream = null
 
-          const transcriptStore = useTranscriptStore()
           void (async () => {
-            if (transcriptStore.transcriptState === 'live' || transcriptStore.transcriptState === 'finalizing') {
-              await this._flushLiveChunks(true)
-              const finalized = await transcriptStore.stopLiveSession(this.durationMs)
-              if (this.audioBlob && (!finalized || !this._liveChunkAccepted)) {
-                await transcriptStore.recoverTranscriptFromAudio(this.audioBlob)
-              }
-              return
-            }
-
-            const shouldRecoverFromAudio =
-              !!this.audioBlob &&
-              !transcriptStore.hasTranscript &&
-              (transcriptStore.liveFeatureAvailable === false || transcriptStore.liveWarning !== null)
-
-            if (shouldRecoverFromAudio && this.audioBlob) {
-              await transcriptStore.recoverTranscriptFromAudio(this.audioBlob)
+            const finalized = await transcriptStore.stopLiveSession(this.durationMs)
+            if (!finalized) {
+              this.error = transcriptStore.error ?? 'Live transcription stopped without a final transcript'
             }
           })()
         }
 
-        recorder.start(100)
+        recorder.start()
         this._startTime = Date.now()
         this.recordingState = 'recording'
       } catch (err) {
+        await this._teardownLiveCapture()
+        stream?.getTracks().forEach((t) => t.stop())
+        this._stream = null
         this.error = `Recording failed: ${String(err)}`
+        throw err
       }
     },
 
-    stopRecording(): void {
+    async stopRecording(): Promise<void> {
       if (!this._recorder) return
       const state = this._recorder.state
       if (state === 'paused') {
@@ -229,12 +221,10 @@ export const useRecordingStore = defineStore('recording', {
         this._recorder.pause()
         this._pauseStart = Date.now()
         this.recordingState = 'paused'
+        void this._audioContext?.suspend()
 
         const transcriptStore = useTranscriptStore()
-        void (async () => {
-          await this._flushLiveChunks(true)
-          await transcriptStore.pauseLiveSession(this._currentElapsedMs())
-        })()
+        void transcriptStore.pauseLiveSession(this._currentElapsedMs())
       }
     },
 
@@ -246,9 +236,9 @@ export const useRecordingStore = defineStore('recording', {
         }
         this._recorder.resume()
         this.recordingState = 'recording'
+        void this._audioContext?.resume()
 
         const transcriptStore = useTranscriptStore()
-        this._liveBatchStartMs = this._lastChunkEndMs
         void transcriptStore.resumeLiveSession(this._currentElapsedMs())
       }
     },
@@ -269,11 +259,11 @@ export const useRecordingStore = defineStore('recording', {
       this.recordingState = 'idle'
       this._pausedMs = 0
       this._pauseStart = 0
-      this._lastChunkEndMs = 0
+      this._chunks = []
       this._livePendingChunks = []
       this._livePendingBytes = 0
-      this._liveBatchStartMs = 0
       this._liveChunkAccepted = false
+      void this._teardownLiveCapture()
       this.resetLevelBars()
     },
   },
