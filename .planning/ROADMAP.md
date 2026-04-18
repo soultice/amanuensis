@@ -469,6 +469,16 @@ Plans:
 - [ ] 26-03-PLAN.md — switch renderer live transcription to AudioWorklet PCM streaming with fail-fast start
 - [ ] 26-04-PLAN.md — preserve durable audio/session restore flows alongside the new live path
 
+### Phase 27: reduce live transcription delay with latest-only inference scheduling
+
+**Goal:** Reduce live transcription latency by making the sidecar prioritize the newest useful PCM tail instead of processing every intermediate window, so first text lands closer to the 500ms range and transcript settling no longer trails speech by several seconds.
+**Requirements**: TBD
+**Depends on:** Phase 26
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 27 to break down)
+
 ---
 *Roadmap de-duplicated: 2026-04-17*
 *Removed phantom duplicate phase chain: 25-82 plus stray duplicate live-transcription artefacts.*
