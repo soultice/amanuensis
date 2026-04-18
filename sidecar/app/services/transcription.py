@@ -5,6 +5,7 @@ Model is loaded once and cached as a module-level singleton.
 from __future__ import annotations
 
 import subprocess
+import sys
 import threading
 import time
 import wave
@@ -13,8 +14,9 @@ from tempfile import NamedTemporaryFile
 from typing import Any, Optional
 
 _model: Optional[Any] = None
-_model_cache_key: tuple[str, tuple[str, ...]] | None = None
+_model_cache_key: tuple[str, str, tuple[tuple[str, tuple[str, ...], str | None], ...]] | None = None
 _model_lock = threading.Lock()
+_runtime_metadata: dict[str, Any] | None = None
 
 
 def _is_punctuation_token(token: str) -> bool:
@@ -124,48 +126,101 @@ def get_available_execution_providers() -> list[str]:
         return ['CPUExecutionProvider']
 
 
-def resolve_execution_provider_order(device: str = 'auto') -> tuple[str, list[str]]:
-    requested = (device or 'auto').strip().lower()
-    available = get_available_execution_providers()
-
-    if requested == 'cpu':
-        return 'CPUExecutionProvider', ['CPUExecutionProvider']
-
-    if requested == 'cuda':
-        if 'CUDAExecutionProvider' in available:
-            return 'CUDAExecutionProvider', ['CUDAExecutionProvider', 'CPUExecutionProvider']
-        return 'CPUExecutionProvider', ['CPUExecutionProvider']
-
-    # CoreML is discoverable on macOS, but Parakeet's ONNX export currently fails to
-    # initialize there because the encoder uses external data (`encoder-model.onnx.data`).
-    # Keep auto mode on providers we have verified end-to-end for this model family.
-    preferred = [
-        'CUDAExecutionProvider',
-        'DmlExecutionProvider',
-        'CPUExecutionProvider',
-    ]
-    ordered = [provider for provider in preferred if provider in available]
-    if 'CPUExecutionProvider' not in ordered:
-        ordered.append('CPUExecutionProvider')
-    selected = ordered[0] if ordered else 'CPUExecutionProvider'
-    return selected, ordered
-
-
-def describe_runtime_provider(device: str = 'auto') -> dict[str, Any]:
-    selected, order = resolve_execution_provider_order(device)
+def _runtime_candidate(provider: str, provider_order: list[str], quantization: str | None = None) -> dict[str, Any]:
     return {
-        'deviceMode': (device or 'auto').strip().lower() or 'auto',
-        'runtimeProvider': selected,
-        'availableProviders': get_available_execution_providers(),
-        'providerOrder': order,
+        'runtimeProvider': provider,
+        'providerOrder': provider_order,
+        'quantization': quantization,
     }
 
 
+def resolve_execution_candidates(device: str = 'auto') -> list[dict[str, Any]]:
+    requested = (device or 'auto').strip().lower() or 'auto'
+    available = get_available_execution_providers()
+    candidates: list[dict[str, Any]] = []
+    seen: set[tuple[str, tuple[str, ...], str | None]] = set()
+
+    # Phase 26 follow-up: disable CoreML auto-selection on macOS for Parakeet.
+    # In real recordings it can emit repeated CoreML partitioning warnings and
+    # `Context leak detected, CoreAnalytics returned false`, while also adding
+    # noticeable live-transcription delay. The app's public device contract is
+    # only auto/cpu/cuda, so prefer the stable CPU path on macOS until CoreML
+    # proves production-safe for this model family.
+
+    def add(provider: str, provider_order: list[str], quantization: str | None = None) -> None:
+        key = (provider, tuple(provider_order), quantization)
+        if key in seen:
+            return
+        seen.add(key)
+        candidates.append(_runtime_candidate(provider, provider_order, quantization))
+
+    if requested == 'cpu':
+        add('CPUExecutionProvider', ['CPUExecutionProvider'])
+        return candidates
+
+    if requested == 'cuda':
+        if 'CUDAExecutionProvider' in available:
+            add('CUDAExecutionProvider', ['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        add('CPUExecutionProvider', ['CPUExecutionProvider'])
+        return candidates
+
+    if 'CUDAExecutionProvider' in available:
+        add('CUDAExecutionProvider', ['CUDAExecutionProvider', 'CPUExecutionProvider'])
+
+    if 'DmlExecutionProvider' in available:
+        add('DmlExecutionProvider', ['DmlExecutionProvider', 'CPUExecutionProvider'])
+
+    add('CPUExecutionProvider', ['CPUExecutionProvider'])
+    return candidates
+
+
+def resolve_execution_provider_order(device: str = 'auto') -> tuple[str, list[str]]:
+    candidate = resolve_execution_candidates(device)[0]
+    return str(candidate['runtimeProvider']), list(candidate['providerOrder'])
+
+
+def _runtime_metadata_from_candidate(
+    device: str,
+    candidate: dict[str, Any],
+    *,
+    warning: str | None = None,
+    fallback_used: bool = False,
+) -> dict[str, Any]:
+    return {
+        'deviceMode': (device or 'auto').strip().lower() or 'auto',
+        'runtimeProvider': str(candidate['runtimeProvider']),
+        'availableProviders': get_available_execution_providers(),
+        'providerOrder': list(candidate['providerOrder']),
+        'runtimeQuantization': candidate.get('quantization') or 'default',
+        'runtimeFallbackUsed': fallback_used,
+        'runtimeWarning': warning,
+    }
+
+
+def describe_runtime_provider(device: str = 'auto') -> dict[str, Any]:
+    requested = (device or 'auto').strip().lower() or 'auto'
+    if _runtime_metadata is not None and _runtime_metadata.get('deviceMode') == requested:
+        return dict(_runtime_metadata)
+    return _runtime_metadata_from_candidate(requested, resolve_execution_candidates(requested)[0])
+
+
+def _model_cache_candidates_key(candidates: list[dict[str, Any]]) -> tuple[tuple[str, tuple[str, ...], str | None], ...]:
+    return tuple(
+        (
+            str(candidate['runtimeProvider']),
+            tuple(str(provider) for provider in candidate['providerOrder']),
+            candidate.get('quantization'),
+        )
+        for candidate in candidates
+    )
+
+
 def get_model(model_dir: Path, device: str = 'auto') -> Any:
-    """Load ONNX model once and cache it per model dir and provider order."""
-    global _model, _model_cache_key
-    _selected_provider, provider_order = resolve_execution_provider_order(device)
-    cache_key = (str(model_dir.resolve()), tuple(provider_order))
+    """Load ONNX model once and cache it per model dir and runtime candidate set."""
+    global _model, _model_cache_key, _runtime_metadata
+    requested = (device or 'auto').strip().lower() or 'auto'
+    candidates = resolve_execution_candidates(requested)
+    cache_key = (str(model_dir.resolve()), requested, _model_cache_candidates_key(candidates))
 
     if _model is None or _model_cache_key != cache_key:
         with _model_lock:
@@ -186,27 +241,63 @@ def get_model(model_dir: Path, device: str = 'auto') -> Any:
                         f"ASR model directory is missing required files: {missing} (dir={resolved_dir})"
                     )
 
-                try:
-                    loaded = onnx_asr.load_model(
-                        'nemo-parakeet-tdt-0.6b-v3',
-                        str(resolved_dir),
-                        providers=provider_order,
+                failures: list[tuple[dict[str, Any], Exception]] = []
+                loaded_model: Any | None = None
+                selected_candidate: dict[str, Any] | None = None
+
+                for candidate in candidates:
+                    try:
+                        loaded = onnx_asr.load_model(
+                            'nemo-parakeet-tdt-0.6b-v3',
+                            str(resolved_dir),
+                            quantization=candidate.get('quantization'),
+                            providers=list(candidate['providerOrder']),
+                        )
+                        if hasattr(loaded, 'with_timestamps'):
+                            loaded = loaded.with_timestamps()
+                        loaded_model = loaded
+                        selected_candidate = candidate
+                        break
+                    except Exception as exc:
+                        failures.append((candidate, exc))
+
+                if loaded_model is None or selected_candidate is None:
+                    formatted_failures = '; '.join(
+                        (
+                            f"providers={candidate['providerOrder']} quantization={candidate.get('quantization') or 'default'}: {exc}"
+                        )
+                        for candidate, exc in failures
                     )
-                except Exception as exc:
                     raise RuntimeError(
-                        f"Failed to load ASR model from {resolved_dir} with providers={provider_order}: {exc}"
-                    ) from exc
-                if hasattr(loaded, 'with_timestamps'):
-                    loaded = loaded.with_timestamps()
-                _model = loaded
+                        f"Failed to load ASR model from {resolved_dir} after trying all runtimes: {formatted_failures}"
+                    )
+
+                warning: str | None = None
+                if failures:
+                    attempted = failures[0][0]
+                    warning = (
+                        f"{attempted['runtimeProvider']} ({attempted.get('quantization') or 'default'}) "
+                        f"was unavailable for Parakeet on this machine; using {selected_candidate['runtimeProvider']} "
+                        f"({selected_candidate.get('quantization') or 'default'}) instead."
+                    )
+
+                _model = loaded_model
                 _model_cache_key = cache_key
+                _runtime_metadata = _runtime_metadata_from_candidate(
+                    requested,
+                    selected_candidate,
+                    warning=warning,
+                    fallback_used=bool(failures),
+                )
     return _model
 
 
-def warm_model_for_live(model_dir: Path, device: str = 'auto') -> dict[str, float]:
+def warm_model_for_live(model_dir: Path, device: str = 'auto') -> dict[str, Any]:
     started = time.perf_counter()
     get_model(model_dir, device=device)
-    return {'warmupMs': round((time.perf_counter() - started) * 1000, 2)}
+    metadata = describe_runtime_provider(device)
+    metadata['warmupMs'] = round((time.perf_counter() - started) * 1000, 2)
+    return metadata
 
 
 def decode_webm_to_pcm(audio_path: Path) -> tuple[bytes, int]:
