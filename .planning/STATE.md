@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 27 of 27 (reduce live transcription delay with latest only inference scheduling)
 status: planning
-last_updated: "2026-04-18T12:55:06.839Z"
+last_updated: "2026-04-18T13:12:02.409Z"
 progress:
   total_phases: 27
   completed_phases: 26
@@ -30,6 +30,7 @@ See: .planning/PROJECT.md
 - 2026-04-17: Removed phantom duplicate phase entries/directories and restored the roadmap to the canonical 24-phase chain.
 - 2026-04-18: Captured Phase 26 context; resume from `.planning/phases/26-live-transcription-architecture-to-avoid-per-chunk-temp-files-and-expensive-decode-transcribe-churn-by-capturing-pcm-directly-in-the-renderer-or-keeping-decoding-transcription-in-memory-persistent-across-chunks/26-CONTEXT.md`.
 - 2026-04-18: Added Phase 27 to attack remaining live latency by switching the sidecar toward latest-only inference scheduling and stale-window dropping.
+- 2026-04-18: Captured Phase 27 context; resume from `.planning/phases/27-reduce-live-transcription-delay-with-latest-only-inference-scheduling/27-CONTEXT.md`.
 
 ## Accumulated Context
 
