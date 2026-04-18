@@ -47,6 +47,10 @@ export const useTranscriptStore = defineStore('transcript', {
     liveWorkerBusy: false as boolean,
     liveWaitingRequests: 0 as number,
     liveUpdateGapMs: null as number | null,
+    livePendingLatest: false as boolean,
+    liveLatestSeqAccepted: 0 as number,
+    liveLatestSeqProcessed: 0 as number,
+    liveSupersededResultsDropped: 0 as number,
     liveSpeedMode: 'safe_auto' as 'safe_auto' | 'aggressive_internal',
     boundaryMarkers: [] as Array<{ type: 'pause-start' | 'pause-end'; atMs: number }>,
     error: null as string | null,
@@ -103,6 +107,11 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveWorkerBusy = (metrics.workerBusy as boolean | undefined) ?? this.liveWorkerBusy
       this.liveWaitingRequests = (metrics.waitingRequests as number | undefined) ?? this.liveWaitingRequests
       this.liveUpdateGapMs = (metrics.updateGapMs as number | undefined) ?? this.liveUpdateGapMs
+      this.livePendingLatest = (metrics.pendingLatest as boolean | undefined) ?? this.livePendingLatest
+      this.liveLatestSeqAccepted = (metrics.latestSeqAccepted as number | undefined) ?? this.liveLatestSeqAccepted
+      this.liveLatestSeqProcessed = (metrics.latestSeqProcessed as number | undefined) ?? this.liveLatestSeqProcessed
+      this.liveSupersededResultsDropped =
+        (metrics.supersededResultsDropped as number | undefined) ?? this.liveSupersededResultsDropped
       this.liveSpeedMode =
         ((metrics.speedMode as 'safe_auto' | 'aggressive_internal' | undefined) ?? this.liveSpeedMode)
     },
@@ -197,6 +206,10 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveWorkerBusy = false
       this.liveWaitingRequests = 0
       this.liveUpdateGapMs = null
+      this.livePendingLatest = false
+      this.liveLatestSeqAccepted = 0
+      this.liveLatestSeqProcessed = 0
+      this.liveSupersededResultsDropped = 0
       this.liveSpeedMode = 'safe_auto'
       this.boundaryMarkers = []
       this._liveSeq = 0
@@ -406,6 +419,10 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveWorkerBusy = false
       this.liveWaitingRequests = 0
       this.liveUpdateGapMs = null
+      this.livePendingLatest = false
+      this.liveLatestSeqAccepted = 0
+      this.liveLatestSeqProcessed = 0
+      this.liveSupersededResultsDropped = 0
       this.liveSpeedMode = 'safe_auto'
       this.boundaryMarkers = []
       this.error = null

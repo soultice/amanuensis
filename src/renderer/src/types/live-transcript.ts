@@ -83,6 +83,10 @@ export interface LiveChunkResponse {
     waitingRequests?: number
     updateGapMs?: number
     speedMode?: 'safe_auto' | 'aggressive_internal'
+    pendingLatest?: boolean
+    latestSeqAccepted?: number
+    latestSeqProcessed?: number
+    supersededResultsDropped?: number
   }
 }
 
@@ -114,6 +118,10 @@ export interface LivePatchEvent {
     waitingRequests?: number
     updateGapMs?: number
     speedMode?: 'safe_auto' | 'aggressive_internal'
+    pendingLatest?: boolean
+    latestSeqAccepted?: number
+    latestSeqProcessed?: number
+    supersededResultsDropped?: number
   }
 }
 
@@ -127,6 +135,10 @@ export interface LiveTelemetryEvent {
   serverLatencyMs?: number
   timeToFirstTokenMs?: number
   speedMode?: 'safe_auto' | 'aggressive_internal'
+  pendingLatest?: boolean
+  latestSeqAccepted?: number
+  latestSeqProcessed?: number
+  supersededResultsDropped?: number
 }
 
 export interface LiveStateEvent {
@@ -179,6 +191,10 @@ export interface LiveStatusResponse {
   queueDepth: number
   warning: string | null
   error: string | null
+  pendingLatest?: boolean
+  latestSeqAccepted?: number
+  latestSeqProcessed?: number
+  supersededResultsDropped?: number
   deviceMode?: 'auto' | 'cpu' | 'cuda'
   runtimeProvider?: string
   runtimeQuantization?: string
@@ -190,6 +206,10 @@ export interface LiveStatusResponse {
       lastChunkLatencyMs?: number | null
       workerBusy?: boolean
       waitingRequests?: number
+      pendingLatest?: boolean
+      latestSeqAccepted?: number
+      latestSeqProcessed?: number
+      supersededResultsDropped?: number
     }
   }
 }
