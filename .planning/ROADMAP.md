@@ -446,6 +446,29 @@ Plans:
 - [x] 24-04: Auto-select ONNX execution provider and surface runtime metadata
 - [x] 24-05: Decode-once PCM window pipeline for live hot path
 
+### Phase 25: Redesign the record
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 24
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 25 to break down)
+
+### Phase 26: live transcription architecture to avoid per-chunk temp files and expensive decode/transcribe churn by capturing PCM directly in the renderer or keeping decoding/transcription in memory/persistent across chunks
+
+**Goal:** Replace the live transcription blob-upload/polling hot path with fail-fast renderer PCM streaming over two persistent websocket channels while preserving sidecar authority, transcript contracts, pause-safe timing, and the durable saved audio artifact.
+**Requirements**: P26-01, P26-02, P26-03, P26-04, P26-05, P26-06, P26-07, P26-08, P26-09
+**Depends on:** Phase 25
+**Plans:** 4 plans
+
+Plans:
+- [ ] 26-01-PLAN.md — define live PCM prepare/websocket contracts and handshake tests
+- [ ] 26-02-PLAN.md — implement sidecar in-memory PCM ingest and websocket event flow
+- [ ] 26-03-PLAN.md — switch renderer live transcription to AudioWorklet PCM streaming with fail-fast start
+- [ ] 26-04-PLAN.md — preserve durable audio/session restore flows alongside the new live path
+
 ---
 *Roadmap de-duplicated: 2026-04-17*
 *Removed phantom duplicate phase chain: 25-82 plus stray duplicate live-transcription artefacts.*
