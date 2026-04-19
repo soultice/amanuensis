@@ -333,21 +333,12 @@ def write_pcm_to_wav(pcm_bytes: bytes, sample_rate: int, wav_path: Path) -> None
         wf.writeframes(pcm_bytes)
 
 
-def transcribe_wav_file(model_dir: Path, wav_path: Path, device: str = 'auto') -> dict:
-    model = get_model(model_dir, device=device)
-    result = model.recognize(str(wav_path))
-
+def _recognition_result_to_contract(result: Any, *, duration: float) -> dict:
     text = str(getattr(result, 'text', '')).strip()
     tokens = [str(t) for t in (getattr(result, 'tokens', []) or [])]
     timestamps = [float(t) for t in (getattr(result, 'timestamps', []) or [])]
 
     words = _tokens_to_words(tokens, timestamps, segment_id=0, word_id_start=0)
-
-    with wave.open(str(wav_path), 'rb') as wf:
-        frames = wf.getnframes()
-        rate = wf.getframerate()
-        duration = round(float(frames) / float(rate), 2) if rate else 0.0
-
     segment_end = round(float(words[-1]['end']), 3) if words else duration
     segments = [
         {
@@ -364,6 +355,33 @@ def transcribe_wav_file(model_dir: Path, wav_path: Path, device: str = 'auto') -
         'language': '',
         'duration': duration,
     }
+
+
+def transcribe_wav_file(model_dir: Path, wav_path: Path, device: str = 'auto') -> dict:
+    model = get_model(model_dir, device=device)
+    result = model.recognize(str(wav_path))
+
+    with wave.open(str(wav_path), 'rb') as wf:
+        frames = wf.getnframes()
+        rate = wf.getframerate()
+        duration = round(float(frames) / float(rate), 2) if rate else 0.0
+
+    return _recognition_result_to_contract(result, duration=duration)
+
+
+def transcribe_pcm_bytes(model_dir: Path, pcm_bytes: bytes, sample_rate: int, device: str = 'auto') -> dict:
+    if sample_rate <= 0:
+        raise ValueError(f'PCM sample rate must be positive, got {sample_rate}')
+    if not pcm_bytes:
+        return _recognition_result_to_contract(type('RecognitionResult', (), {'text': '', 'tokens': [], 'timestamps': []})(), duration=0.0)
+
+    import numpy as np  # type: ignore
+
+    model = get_model(model_dir, device=device)
+    waveform = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+    result = model.recognize(waveform, sample_rate=sample_rate)
+    duration = round(len(pcm_bytes) / float(sample_rate * 2), 2)
+    return _recognition_result_to_contract(result, duration=duration)
 
 
 def transcribe_file(model_dir: Path, audio_path: Path, device: str = 'auto') -> dict:

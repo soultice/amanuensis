@@ -32,14 +32,12 @@ def _install_fake_pipeline(
     block_on_transcribe: threading.Event | None = None,
     entered: threading.Event | None = None,
 ) -> None:
-    monkeypatch.setattr(live_service, 'write_pcm_to_wav', lambda pcm, _sample_rate, wav_path: wav_path.write_bytes(pcm))
-
-    def _fake_transcribe(_model_dir: Path, wav_path: Path, _device: str) -> dict:
+    def _fake_transcribe(_model_dir: Path, pcm_bytes: bytes, _sample_rate: int, _device: str) -> dict:
         if entered is not None:
             entered.set()
         if block_on_transcribe is not None:
             block_on_transcribe.wait(timeout=2)
-        text = wav_path.read_bytes().decode(errors='ignore').strip()
+        text = pcm_bytes.decode(errors='ignore').strip()
         tokens = [token for token in text.split(' ') if token]
         if not tokens:
             tokens = ['live', 'test']
@@ -56,7 +54,9 @@ def _install_fake_pipeline(
             'duration': words[-1]['end'],
         }
 
-    monkeypatch.setattr(live_service, 'transcribe_wav_file', _fake_transcribe)
+    monkeypatch.setattr(live_service, 'transcribe_pcm_bytes', _fake_transcribe)
+    if state.live_transcription_manager is not None:
+        state.live_transcription_manager._transcribe_pcm_callable = _fake_transcribe
     monkeypatch.setattr(transcribe_routes, 'warm_model_for_live', lambda *_args, **_kwargs: {'warmupMs': 1.0})
 
 

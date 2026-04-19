@@ -7,10 +7,9 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import Any, Callable
 
-from app.services.transcription import transcribe_wav_file, write_pcm_to_wav
+from app.services.transcription import transcribe_pcm_bytes
 
 TTFT_P50_TARGET_MS = 800
 TTFT_P95_TARGET_MS = 1500
@@ -109,8 +108,11 @@ class LiveSession:
 
 
 class LiveTranscriptionManager:
-    def __init__(self, transcribe_callable: Callable[[Path, Path, str], dict[str, Any]]) -> None:
-        self._transcribe_callable = transcribe_callable
+    def __init__(
+        self,
+        transcribe_pcm_callable: Callable[[Path, bytes, int, str], dict[str, Any]] | None = None,
+    ) -> None:
+        self._transcribe_pcm_callable = transcribe_pcm_callable or transcribe_pcm_bytes
         self._sessions: dict[str, LiveSession] = {}
         self._sessions_lock = asyncio.Lock()
 
@@ -431,14 +433,15 @@ class LiveTranscriptionManager:
         ]
 
     async def _transcribe_pcm_window(self, *, model_dir: Path, pcm_bytes: bytes, sample_rate: int, device: str) -> dict[str, Any]:
-        with NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
-            wav_path = Path(tmp.name)
-        try:
-            write_pcm_to_wav(pcm_bytes, sample_rate, wav_path)
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, transcribe_wav_file, model_dir, wav_path, device)
-        finally:
-            wav_path.unlink(missing_ok=True)
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            self._transcribe_pcm_callable,
+            model_dir,
+            pcm_bytes,
+            sample_rate,
+            device,
+        )
 
     def _ensure_session_worker(self, *, session: LiveSession, model_dir: Path, device: str) -> None:
         if session.worker_task is None or session.worker_task.done():
@@ -809,6 +812,7 @@ class LiveTranscriptionManager:
                     'ttftP95Ms': TTFT_P95_TARGET_MS,
                     'updateCadenceP50Ms': UPDATE_CADENCE_P50_TARGET_MS,
                     'queueDepthP95': QUEUE_DEPTH_P95_TARGET,
+                    'finalizeP95Ms': FINALIZE_P95_TARGET_MS,
                 },
                 'observed': {
                     'ttftMs': session.ttft_ms,

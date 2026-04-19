@@ -23,7 +23,7 @@ def _append_pcm_packet(session: LiveSession, *, seq: int, start_ms: int, end_ms:
 
 
 def _manager() -> LiveTranscriptionManager:
-    return LiveTranscriptionManager(lambda _model_dir, _audio_path, _device: {})
+    return LiveTranscriptionManager(lambda _model_dir, _pcm_bytes, _sample_rate, _device: {})
 
 
 def _session() -> LiveSession:

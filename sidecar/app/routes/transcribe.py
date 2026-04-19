@@ -13,11 +13,8 @@ from app.services.live_transcription import (
     LiveTransitionError,
     resolve_live_speed_mode,
 )
-from app.services.transcription import (
-    describe_runtime_provider,
-    transcribe_file,
-    warm_model_for_live,
-)
+from app.services.live_warmth import spawn_live_warmup_if_possible
+from app.services.transcription import describe_runtime_provider, transcribe_file, warm_model_for_live
 
 router = APIRouter(prefix='/transcribe')
 
@@ -43,6 +40,17 @@ class LivePrepareRequest(BaseModel):
 class LiveSessionControlRequest(BaseModel):
     sessionId: str
     atMs: int
+
+
+def _live_warm_response_fields() -> dict[str, str | float | None]:
+    warm_status = state.get_live_warm_status()
+    return {
+        'liveWarmState': warm_status.get('state'),
+        'liveWarmTrigger': warm_status.get('trigger'),
+        'liveWarmupMs': warm_status.get('warmupMs'),
+        'liveWarmError': warm_status.get('error'),
+        'liveWarmUpdatedAt': warm_status.get('updatedAt'),
+    }
 
 
 @router.get('/status')
@@ -106,6 +114,12 @@ async def live_prepare(req: LivePrepareRequest):
     if state.live_transcription_manager is None:
         raise HTTPException(status_code=503, detail='Live transcription manager not ready')
 
+    warm_status = state.get_live_warm_status()
+    if state.model_manager is not None and state.model_manager.state == 'present':
+        if warm_status.get('state') not in {'warm', 'warming'}:
+            spawn_live_warmup_if_possible('live-prepare')
+            warm_status = state.get_live_warm_status()
+
     result = await state.live_transcription_manager.prepare_session(
         sample_rate=req.sampleRate,
         channels=req.channels,
@@ -123,12 +137,17 @@ async def live_prepare(req: LivePrepareRequest):
     warnings: list[str] = []
     if result.get('warning'):
         warnings.append(str(result['warning']))
+    if warm_status.get('state') == 'warming':
+        warnings.append('Live model warmup in progress — first session may still pay cold-start cost')
+    elif warm_status.get('state') == 'failed':
+        warnings.append('Live model warmup unavailable — first session may be slower')
 
     runtime = describe_runtime_provider(state.transcription_device)
     runtime_warning = runtime.pop('runtimeWarning', None)
     if runtime_warning:
         warnings.append(str(runtime_warning))
     result.update(runtime)
+    result.update(_live_warm_response_fields())
 
     if warnings:
         result['warning'] = ' | '.join(warnings)
@@ -153,13 +172,16 @@ async def live_start(req: LiveStartRequest):
 
     try:
         if state.model_manager is not None and state.model_manager.state == 'present':
-            warmup = warm_model_for_live(
-                state.model_manager.get_model_path(),
-                device=state.transcription_device,
-            )
-            defaults = result.setdefault('defaults', {})
-            defaults['warmupMs'] = warmup.get('warmupMs')
+            if state.begin_live_warmup('live-start'):
+                warmup = warm_model_for_live(
+                    state.model_manager.get_model_path(),
+                    device=state.transcription_device,
+                )
+                state.finish_live_warmup(trigger='live-start', metadata=warmup)
+                defaults = result.setdefault('defaults', {})
+                defaults['warmupMs'] = warmup.get('warmupMs')
     except Exception as exc:
+        state.fail_live_warmup(trigger='live-start', error=str(exc))
         warnings.append(f'Live warmup warning: {exc}')
 
     runtime = describe_runtime_provider(state.transcription_device)
@@ -167,6 +189,7 @@ async def live_start(req: LiveStartRequest):
     if runtime_warning:
         warnings.append(str(runtime_warning))
     result.update(runtime)
+    result.update(_live_warm_response_fields())
 
     if warnings:
         result['warning'] = ' | '.join(warnings)

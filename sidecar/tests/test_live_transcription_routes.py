@@ -16,6 +16,7 @@ import app.state as state
 from app.main import create_app
 from app.routes import transcribe as transcribe_routes
 from app.services import live_transcription as live_service
+from app.services import live_warmth
 
 
 class _FakeModelManager:
@@ -23,6 +24,13 @@ class _FakeModelManager:
 
     def get_model_path(self) -> Path:
         return Path('.')
+
+
+class _MissingModelManager:
+    state = 'missing'
+
+    def get_model_path(self) -> Path:
+        raise FileNotFoundError('model missing')
 
 
 def _fake_words(seed: str = 'hello world') -> dict:
@@ -42,23 +50,39 @@ def _fake_words(seed: str = 'hello world') -> dict:
 
 
 def _install_fake_live_pipeline(monkeypatch, *, block_on_transcribe: threading.Event | None = None, entered: threading.Event | None = None) -> None:
-    monkeypatch.setattr(live_service, 'write_pcm_to_wav', lambda pcm, _sample_rate, wav_path: wav_path.write_bytes(pcm))
-
-    def _fake_transcribe(_model_dir: Path, wav_path: Path, _device: str) -> dict:
+    def _fake_transcribe(_model_dir: Path, pcm_bytes: bytes, _sample_rate: int, _device: str) -> dict:
         if entered is not None:
             entered.set()
         if block_on_transcribe is not None:
             block_on_transcribe.wait(timeout=2)
-        payload = wav_path.read_bytes().decode(errors='ignore').strip() or 'hello world'
+        payload = pcm_bytes.decode(errors='ignore').strip() or 'hello world'
         return _fake_words(payload)
 
-    monkeypatch.setattr(live_service, 'transcribe_wav_file', _fake_transcribe)
+    monkeypatch.setattr(live_service, 'transcribe_pcm_bytes', _fake_transcribe)
+    if state.live_transcription_manager is not None:
+        state.live_transcription_manager._transcribe_pcm_callable = _fake_transcribe
     monkeypatch.setattr(transcribe_routes, 'warm_model_for_live', lambda *_args, **_kwargs: {'warmupMs': 1.0})
+
+
+def _reset_live_warm_status() -> None:
+    state.live_warm_status.update(
+        {
+            'state': 'idle',
+            'trigger': None,
+            'startedAt': None,
+            'updatedAt': None,
+            'warmupMs': None,
+            'error': None,
+            'runtimeProvider': None,
+            'runtimeQuantization': None,
+        }
+    )
 
 
 def _client(monkeypatch) -> TestClient:
     app = create_app('/tmp/amanuensis-test', device='cpu')
     state.model_manager = _FakeModelManager()
+    _reset_live_warm_status()
     assert state.live_transcription_manager is not None
     _install_fake_live_pipeline(monkeypatch)
     return TestClient(app)
@@ -112,6 +136,33 @@ def test_live_endpoints_contract(monkeypatch) -> None:
     assert set(['sessionId', 'state', 'lastSeq', 'queueDepth', 'warning', 'error']).issubset(status.json().keys())
 
 
+def test_spawn_live_warmup_runs_only_when_model_present(monkeypatch) -> None:
+    _reset_live_warm_status()
+    called = threading.Event()
+
+    def _fake_warm(_model_dir: Path, device: str = 'auto') -> dict:
+        called.set()
+        return {
+            'warmupMs': 2.5,
+            'runtimeProvider': 'CPUExecutionProvider',
+            'runtimeQuantization': 'default',
+        }
+
+    monkeypatch.setattr(live_warmth, 'warm_model_for_live', _fake_warm)
+
+    state.model_manager = _FakeModelManager()
+    assert live_warmth.spawn_live_warmup_if_possible('test-present') is True
+    assert called.wait(timeout=1)
+    assert state.get_live_warm_status()['state'] == 'warm'
+
+    _reset_live_warm_status()
+    called.clear()
+    state.model_manager = _MissingModelManager()
+    assert live_warmth.spawn_live_warmup_if_possible('test-missing') is False
+    assert called.wait(timeout=0.05) is False
+    assert state.get_live_warm_status()['state'] == 'skipped'
+
+
 def test_live_prepare_returns_socket_contract_and_runtime_metadata(monkeypatch) -> None:
     monkeypatch.setattr(
         transcribe_routes,
@@ -144,6 +195,8 @@ def test_live_prepare_returns_socket_contract_and_runtime_metadata(monkeypatch) 
     assert payload['runtimeProvider'] == 'CPUExecutionProvider'
     assert payload['runtimeQuantization'] == 'default'
     assert payload['runtimeFallbackUsed'] is False
+    assert payload['liveWarmState'] in {'warming', 'warm'}
+    assert 'liveWarmUpdatedAt' in payload
 
 
 class _FakeOutputWebSocket:

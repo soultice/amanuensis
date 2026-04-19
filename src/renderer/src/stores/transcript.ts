@@ -41,6 +41,10 @@ export const useTranscriptStore = defineStore('transcript', {
     liveRuntimeProvider: null as string | null,
     liveRuntimeQuantization: null as string | null,
     liveRuntimeFallbackUsed: false as boolean,
+    liveWarmState: null as 'idle' | 'warming' | 'warm' | 'failed' | 'skipped' | null,
+    liveWarmTrigger: null as string | null,
+    liveWarmupMs: null as number | null,
+    liveWarmError: null as string | null,
     liveTimeToFirstTokenMs: null as number | null,
     liveServerLatencyMs: null as number | null,
     liveQueueDepth: 0,
@@ -200,6 +204,10 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveRuntimeProvider = null
       this.liveRuntimeQuantization = null
       this.liveRuntimeFallbackUsed = false
+      this.liveWarmState = null
+      this.liveWarmTrigger = null
+      this.liveWarmupMs = null
+      this.liveWarmError = null
       this.liveTimeToFirstTokenMs = null
       this.liveServerLatencyMs = null
       this.liveQueueDepth = 0
@@ -317,6 +325,10 @@ export const useTranscriptStore = defineStore('transcript', {
         this.liveRuntimeQuantization = prepared.runtimeQuantization ?? null
         this.liveRuntimeFallbackUsed = prepared.runtimeFallbackUsed ?? false
         this.liveSpeedMode = prepared.speedMode ?? 'safe_auto'
+        this.liveWarmState = prepared.liveWarmState ?? null
+        this.liveWarmTrigger = prepared.liveWarmTrigger ?? null
+        this.liveWarmupMs = prepared.liveWarmupMs ?? null
+        this.liveWarmError = prepared.liveWarmError ?? null
         this.liveWarning = prepared.warning ?? null
 
         await stream.connect(sidecarStore.port, prepared, {
@@ -413,6 +425,10 @@ export const useTranscriptStore = defineStore('transcript', {
       this.liveRuntimeProvider = null
       this.liveRuntimeQuantization = null
       this.liveRuntimeFallbackUsed = false
+      this.liveWarmState = null
+      this.liveWarmTrigger = null
+      this.liveWarmupMs = null
+      this.liveWarmError = null
       this.liveTimeToFirstTokenMs = null
       this.liveServerLatencyMs = null
       this.liveQueueDepth = 0

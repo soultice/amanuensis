@@ -80,6 +80,15 @@
         <span class="toolbar__live-stat"><strong>Producer</strong> {{ producerLabel }}</span>
       </div>
 
+      <span
+        v-if="showLiveWarmBadge"
+        class="toolbar__live-warm"
+        :class="liveWarmBadgeClass"
+        :title="liveWarmBadgeTitle"
+      >
+        {{ liveWarmBadgeLabel }}
+      </span>
+
       <!-- Live transcription warning -->
       <span
         v-if="transcriptStore.liveWarning"
@@ -182,6 +191,42 @@ const saveBarTitle = computed<string>(() => {
 
 const showLiveStats = computed<boolean>(() => {
   return transcriptStore.transcriptState === 'live' || transcriptStore.transcriptState === 'finalizing'
+})
+
+const showLiveWarmBadge = computed<boolean>(() => {
+  if (transcriptStore.liveWarmState === null) return false
+  return transcriptStore.transcriptState === 'transcribing'
+    || transcriptStore.transcriptState === 'live'
+    || transcriptStore.transcriptState === 'finalizing'
+})
+
+const liveWarmBadgeLabel = computed<string>(() => {
+  switch (transcriptStore.liveWarmState) {
+    case 'warm':
+      return 'Live ready'
+    case 'warming':
+      return 'Warming live model…'
+    case 'failed':
+      return 'Live prewarm unavailable'
+    case 'skipped':
+      return 'Live prewarm skipped'
+    default:
+      return 'Preparing live model…'
+  }
+})
+
+const liveWarmBadgeTitle = computed<string>(() => {
+  const parts = [liveWarmBadgeLabel.value]
+  if (transcriptStore.liveWarmupMs !== null) parts.push(`warmup ${Math.round(transcriptStore.liveWarmupMs)}ms`)
+  if (transcriptStore.liveWarmTrigger) parts.push(`trigger ${transcriptStore.liveWarmTrigger}`)
+  if (transcriptStore.liveWarmError) parts.push(transcriptStore.liveWarmError)
+  return parts.join(' · ')
+})
+
+const liveWarmBadgeClass = computed<string>(() => {
+  if (transcriptStore.liveWarmState === 'warm') return 'toolbar__live-warm--ready'
+  if (transcriptStore.liveWarmState === 'failed') return 'toolbar__live-warm--warn'
+  return 'toolbar__live-warm--pending'
 })
 
 const ttftLabel = computed<string>(() => {
@@ -417,6 +462,29 @@ function playRecording(): void {
   font-weight: 600;
   margin-right: 4px;
 }
+.toolbar__live-warm {
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.toolbar__live-warm--ready {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+
+.toolbar__live-warm--pending {
+  background: color-mix(in srgb, var(--accent-blue) 16%, transparent);
+  color: var(--accent-blue);
+}
+
+.toolbar__live-warm--warn {
+  background: color-mix(in srgb, #b58900 18%, transparent);
+  color: #b58900;
+}
+
 .toolbar__warning {
   font-size: 0.75rem;
   color: #b58900;

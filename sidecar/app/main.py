@@ -1,4 +1,6 @@
 import argparse
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +11,7 @@ from app.routes.model import router as model_router
 from app.routes.transcribe import router as transcribe_router
 from app.services.model_manager import ModelManager
 from app.services.live_transcription import LiveTranscriptionManager
-from app.services.transcription import transcribe_file
+from app.services.live_warmth import spawn_live_warmup_if_possible
 
 
 def create_app(user_data_dir: str, device: str = "auto") -> FastAPI:
@@ -17,9 +19,14 @@ def create_app(user_data_dir: str, device: str = "auto") -> FastAPI:
     # Initialise shared state
     state.model_manager = ModelManager(user_data_dir)
     state.transcription_device = device
-    state.live_transcription_manager = LiveTranscriptionManager(transcribe_file)
+    state.live_transcription_manager = LiveTranscriptionManager()
 
-    api = FastAPI(title="Amanuensis Sidecar", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        spawn_live_warmup_if_possible('startup')
+        yield
+
+    api = FastAPI(title="Amanuensis Sidecar", version="0.1.0", lifespan=lifespan)
 
     # Fix: CORS middleware so the Electron Chromium renderer (served from
     # file:// in production or http://localhost:<port> in dev) can fetch the

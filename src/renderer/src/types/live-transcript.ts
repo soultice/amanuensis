@@ -22,6 +22,11 @@ export interface LivePrepareResponse {
   runtimeFallbackUsed?: boolean
   availableProviders?: string[]
   speedMode?: 'safe_auto' | 'aggressive_internal'
+  liveWarmState?: 'idle' | 'warming' | 'warm' | 'failed' | 'skipped'
+  liveWarmTrigger?: string | null
+  liveWarmupMs?: number | null
+  liveWarmError?: string | null
+  liveWarmUpdatedAt?: string | null
   warning?: string
 }
 
@@ -50,6 +55,11 @@ export interface LiveStartResponse {
   state: 'live' | 'paused' | 'finalizing' | 'complete' | 'error'
   createdAt: string
   speedMode?: 'safe_auto' | 'aggressive_internal'
+  liveWarmState?: 'idle' | 'warming' | 'warm' | 'failed' | 'skipped'
+  liveWarmTrigger?: string | null
+  liveWarmupMs?: number | null
+  liveWarmError?: string | null
+  liveWarmUpdatedAt?: string | null
   warning?: string
   defaults?: {
     chunkWindowMs?: number
