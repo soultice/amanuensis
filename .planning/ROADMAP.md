@@ -472,12 +472,33 @@ Plans:
 ### Phase 27: reduce live transcription delay with latest-only inference scheduling
 
 **Goal:** Reduce live transcription latency by making the sidecar prioritize the newest useful PCM tail instead of processing every intermediate window, so first text lands closer to the 500ms range and transcript settling no longer trails speech by several seconds.
-**Requirements**: TBD
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07
 **Depends on:** Phase 26
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 27 to break down)
+- [ ] 27-01-PLAN.md — refactor sidecar live scheduling to one-worker latest-only inference with stale-result drop guards
+- [ ] 27-02-PLAN.md — plumb lightweight scheduler telemetry through route tests, renderer typing, store state, and compact status-bar UI
+
+### Phase 28: real-world live latency follow-up — prewarm, diskless live inference, and cadence tuning
+
+**Goal:** Reduce real-world perceived live latency after Phase 27 by eliminating first-session cold-start stalls, removing temp-WAV disk churn from the live hot path, and tuning producer cadence from measured evidence while preserving transcript/finalization contracts.
+**Requirements**: P28-01, P28-02, P28-03, P28-04, P28-05, P28-06, P28-07, P28-08 (see `28-CONTEXT.md`)
+**Depends on:** Phase 27
+**Plans:** 3/3 plans complete
+**Status:** Complete (2026-04-19)
+
+Plans:
+- [x] 28-01-PLAN.md — add proactive live-model prewarm plus renderer-visible readiness so first real recording lands on the warm path
+- [x] 28-02-PLAN.md — remove temp-WAV-per-window work from the live path with an in-memory/diskless inference handoff that preserves transcript contracts
+- [x] 28-03-PLAN.md — add repeatable real-world latency benchmarking and tune producer cadence/default speed mode from measured TTFT, gap, and finalize data
+
+**Success Criteria:**
+1. First live recording after app/model readiness no longer pays the previous multi-second cold-start penalty on the reference benchmark flow
+2. Incremental live inference no longer writes a temp WAV file for each decode window in the hot path
+3. A repeatable benchmark exists for TTFT, patch cadence, queue/scheduler behavior, and finalize latency across cold vs warm runs
+4. Producer cadence and speed-mode defaults are chosen from measured evidence rather than intuition, and `safe_auto` remains default unless another mode clearly wins both responsiveness and tail behavior
+5. Existing live patch/complete payload contracts (`replaceFromWordIndex`, `words`, `segments`, `language`, `duration`) remain unchanged
 
 ---
 *Roadmap de-duplicated: 2026-04-17*

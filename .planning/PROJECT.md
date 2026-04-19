@@ -16,6 +16,8 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 - [x] Live transcription now reports measurable first-token/cadence telemetry with natural-feel target budgets and keeps the final transcript stop payload contract (`{words, segments, language, duration}`) *(Validated in Phase 21: Increase speed of live transcription)*
 - [x] Live renderer cadence adapts to sidecar latency/queue telemetry and exposes in-session verification hints (`Latency: TTFT ... Queue ...`) without regressing non-blocking failure behavior *(Validated in Phase 21: Increase speed of live transcription)*
 - [x] Live pipeline now reports truthful backlog telemetry, applies patch-based transcript updates, uses decode-once PCM windows, and surfaces actual runtime execution provider selection (`deviceMode`, `runtimeProvider`, `availableProviders`) *(Validated in Phase 24: queue/backlog optimization wave)*
+- [x] When the model is already present, live transcription now exposes explicit warm readiness, prewarms fail-open in the background, and avoids temp-WAV writes in the incremental live hot path *(Validated in Phase 28: real-world live latency follow-up)*
+- [x] The repo now includes a repeatable websocket live-latency benchmark so TTFT / gap / finalize tuning can stay evidence-backed; `safe_auto` remains the default until better measurements exist *(Validated in Phase 28: real-world live latency follow-up)*
 
 ### Active
 
@@ -49,7 +51,7 @@ Turn a spoken recording into a shareable, annotated Markdown document with zero 
 - The user creates spoken technical notes and needs to turn them into documentation quickly, without switching tools or losing context.
 - Colleagues receive a `.md` file + `assets/` folder — no special tooling required on their end.
 - Local ASR backend must provide per-word timestamp alignment for transcript navigation and annotations.
-- Current state: Phase 24 completed with truthful live backlog metrics, bounded one-in-flight renderer producer flow, patch-based live payloads, decode-once PCM window ingestion, and runtime provider metadata surfaced from sidecar startup (`auto/cpu/cuda`).
+- Current state: Phase 28 completed with explicit live warm readiness, fail-open sidecar prewarm, diskless incremental live decode via in-memory PCM recognition, truthful backlog/scheduler telemetry, and a checked-in websocket latency benchmark for future tuning.
 - The annotation interaction is text-first: the user works in the transcript, not on a raw waveform. Word selections map to audio timestamps internally.
 - CSS Anchor Positioning (`anchor()` / `position-anchor`) and native `<dialog>` are target APIs for the annotation UI.
 
@@ -90,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after Phase 24 complete — queue/backlog pressure optimizations, patch payloads, PCM window hot-path, and runtime provider metadata shipped*
+*Last updated: 2026-04-19 after Phase 28 complete — warm readiness surfaced, temp-WAV live hot path removed, and websocket latency benchmark shipped*

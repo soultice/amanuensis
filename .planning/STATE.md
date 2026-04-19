@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 27 of 27 (reduce live transcription delay with latest only inference scheduling)
-status: planning
-last_updated: "2026-04-18T13:12:02.409Z"
+current_phase: 28 of 28 (real-world live latency follow-up — prewarm, diskless live inference, and cadence tuning)
+status: completed
+last_updated: "2026-04-19T20:17:53.098Z"
 progress:
-  total_phases: 27
-  completed_phases: 26
-  total_plans: 60
-  completed_plans: 60
+  total_phases: 28
+  completed_phases: 28
+  total_plans: 65
+  completed_plans: 65
 ---
 
 # Session State
@@ -21,8 +21,8 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone
-**Current phase:** 27 of 27 (reduce live transcription delay with latest only inference scheduling)
-**Status:** Ready to plan
+**Current phase:** 28 of 28 (real-world live latency follow-up — prewarm, diskless live inference, and cadence tuning)
+**Status:** Milestone complete
 
 ## Session Log
 
@@ -31,6 +31,8 @@ See: .planning/PROJECT.md
 - 2026-04-18: Captured Phase 26 context; resume from `.planning/phases/26-live-transcription-architecture-to-avoid-per-chunk-temp-files-and-expensive-decode-transcribe-churn-by-capturing-pcm-directly-in-the-renderer-or-keeping-decoding-transcription-in-memory-persistent-across-chunks/26-CONTEXT.md`.
 - 2026-04-18: Added Phase 27 to attack remaining live latency by switching the sidecar toward latest-only inference scheduling and stale-window dropping.
 - 2026-04-18: Captured Phase 27 context; resume from `.planning/phases/27-reduce-live-transcription-delay-with-latest-only-inference-scheduling/27-CONTEXT.md`.
+- 2026-04-19: Added Phase 28 from real-world latency benchmarking to target cold-start prewarm, temp-WAV removal in the live hot path, and measured cadence/default tuning.
+- 2026-04-19: Completed Phase 28 — live warm readiness is explicit, incremental live decode is diskless, and a repeatable websocket latency benchmark is checked in.
 
 ## Accumulated Context
 
@@ -39,3 +41,4 @@ See: .planning/PROJECT.md
 - Phase 25 added: Redesign the record
 - Phase 26 added: live transcription architecture to avoid per-chunk temp files and expensive decode/transcribe churn by capturing PCM directly in the renderer or keeping decoding/transcription in memory/persistent across chunks
 - Phase 27 added: reduce live transcription delay with latest-only inference scheduling
+- Phase 28 added: real-world live latency follow-up — prewarm, diskless live inference, and cadence tuning
