@@ -154,8 +154,7 @@ app.whenReady().then(async () => {
     if (existingIndex.length === 0) {
       const id = crypto.randomUUID()
       const now = new Date()
-      const pad = (n: number): string => String(n).padStart(2, '0')
-      const name = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+      const name = formatDefaultSessionName(now)
       const sessionDir = join(app.getPath('userData'), 'sessions', id)
       await fsPromises.mkdir(join(sessionDir, 'assets'), { recursive: true })
       await fsPromises.writeFile(join(sessionDir, 'session.json'), raw, 'utf-8')
@@ -265,6 +264,11 @@ interface SessionMeta {
   wordCount: number
 }
 
+function formatDefaultSessionName(date: Date): string {
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 async function readSessionIndex(): Promise<SessionMeta[]> {
   const indexPath = join(app.getPath('userData'), 'sessions', 'index.json')
   try {
@@ -307,8 +311,7 @@ async function recoverOrphanedSessions(): Promise<void> {
         const savedAt: string = data.savedAt ?? new Date().toISOString()
         // Derive a display name from the savedAt timestamp
         const d = new Date(savedAt)
-        const pad = (n: number): string => String(n).padStart(2, '0')
-        const name = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+        const name = formatDefaultSessionName(d)
         orphaned.push({ id: entry.name, name, createdAt: savedAt, updatedAt: savedAt, wordCount })
       } catch {
         // Skip unreadable or empty session dirs
@@ -409,7 +412,7 @@ ipcMain.handle('session:list', async () => {
 ipcMain.handle('session:create', async () => {
   const id = crypto.randomUUID()
   const now = new Date()
-  const name = 'Untitled session'
+  const name = formatDefaultSessionName(now)
 
   const sessionDir = join(app.getPath('userData'), 'sessions', id)
   const assetsDir = join(sessionDir, 'assets')

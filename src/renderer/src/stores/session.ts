@@ -59,9 +59,9 @@ export const useSessionStore = defineStore('session', {
       try {
         const sessions = await window.api.listSessions()
         const meta = sessions.find(s => s.id === id)
-        this.sessionName = meta?.name ?? 'Untitled session'
+        this.sessionName = meta?.name ?? ''
       } catch {
-        this.sessionName = 'Untitled session'
+        this.sessionName = ''
       }
 
       if (!raw) return
@@ -221,7 +221,8 @@ export const useSessionStore = defineStore('session', {
         const id = await this.createSession()
         // Set currentSessionId directly — no data to restore for an empty session
         this.currentSessionId = id
-        this.sessionName = 'Untitled session'
+        const sessions = await window.api.listSessions()
+        this.sessionName = sessions.find((session) => session.id === id)?.name ?? ''
       } finally {
         this.startAutoSave()
       }
@@ -275,7 +276,8 @@ export const useSessionStore = defineStore('session', {
 
     async renameSession(name: string): Promise<void> {
       if (!this.currentSessionId) return
-      const trimmed = name.trim() || 'Untitled session'
+      const trimmed = name.trim() || this.sessionName
+      if (!trimmed) return
       await window.api.renameSession(this.currentSessionId, trimmed)
       this.sessionName = trimmed
     },

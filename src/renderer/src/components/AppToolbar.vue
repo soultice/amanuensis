@@ -68,6 +68,18 @@
         ▶ Play
       </button>
 
+      <div
+        v-if="showLiveStats"
+        class="toolbar__live-stats"
+        title="Live transcription telemetry"
+      >
+        <span class="toolbar__live-stat"><strong>TTFT</strong> {{ ttftLabel }}</span>
+        <span class="toolbar__live-stat"><strong>Gap</strong> {{ updateGapLabel }}</span>
+        <span class="toolbar__live-stat"><strong>Queue</strong> {{ transcriptStore.liveQueueDepth }}</span>
+        <span class="toolbar__live-stat"><strong>Scheduler</strong> {{ schedulerLabel }}</span>
+        <span class="toolbar__live-stat"><strong>Producer</strong> {{ producerLabel }}</span>
+      </div>
+
       <!-- Live transcription warning -->
       <span
         v-if="transcriptStore.liveWarning"
@@ -166,6 +178,29 @@ const saveBarTitle = computed<string>(() => {
   const remaining = Math.ceil((sessionStore.autoSavePeriodMs - (Date.now() - sessionStore.lastSavedAt)) / 1000)
   const secs = Math.max(remaining, 0)
   return `Next auto-save in ${secs}s — click to save now`
+})
+
+const showLiveStats = computed<boolean>(() => {
+  return transcriptStore.transcriptState === 'live' || transcriptStore.transcriptState === 'finalizing'
+})
+
+const ttftLabel = computed<string>(() => {
+  if (transcriptStore.liveTimeToFirstTokenMs === null) return '—'
+  return `${Math.round(transcriptStore.liveTimeToFirstTokenMs)}ms`
+})
+
+const updateGapLabel = computed<string>(() => {
+  if (transcriptStore.liveUpdateGapMs === null) return '—'
+  return `${Math.round(transcriptStore.liveUpdateGapMs)}ms`
+})
+
+const schedulerLabel = computed<string>(() => {
+  const pending = transcriptStore.livePendingLatest ? 'yes' : 'no'
+  return `Pending ${pending} · Latest ${transcriptStore.liveLatestSeqProcessed}/${transcriptStore.liveLatestSeqAccepted} · Dropped ${transcriptStore.liveSupersededResultsDropped}`
+})
+
+const producerLabel = computed<string>(() => {
+  return `${recordingStore._livePendingChunks.length} chunk(s) · ${recordingStore._livePendingBytes}B`
 })
 
 const sessionNavigationBlocked = computed<boolean>(() => {
@@ -355,6 +390,32 @@ function playRecording(): void {
 .toolbar__btn--theme:hover {
   color: var(--text-em);
   background: var(--bg-raised);
+}
+.toolbar__live-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 34rem;
+  max-width: 34rem;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-raised);
+  color: var(--text-em);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.toolbar__live-stat {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toolbar__live-stat strong {
+  color: var(--text-de);
+  font-weight: 600;
+  margin-right: 4px;
 }
 .toolbar__warning {
   font-size: 0.75rem;

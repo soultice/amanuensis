@@ -18,7 +18,7 @@
         class="session-title__display"
         @click="startTitleEdit"
         title="Click to rename session"
-      >{{ sessionStore.sessionName || 'Untitled session' }}</h2>
+      >{{ sessionStore.sessionName || 'Session' }}</h2>
     </div>
 
     <!-- Empty state — live-first workflow -->
@@ -162,8 +162,8 @@ function startTitleEdit(): void {
 async function commitTitleEdit(): Promise<void> {
   if (!editingTitle.value) return
   editingTitle.value = false
-  const name = titleDraft.value.trim() || 'Untitled session'
-  if (name !== sessionStore.sessionName) {
+  const name = titleDraft.value.trim() || sessionStore.sessionName
+  if (name && name !== sessionStore.sessionName) {
     await sessionStore.renameSession(name)
   }
 }
@@ -294,8 +294,10 @@ defineExpose({ panelEl })
 .transcript-panel__empty,
 .transcript-panel__progress,
 .transcript-panel__error {
+  width: 100%;
   max-width: 68ch;
   margin: 0 auto;
+  box-sizing: border-box;
   /* Scrolling is handled by .app-shell__transcript (the outer container);
      these elements flow at their natural height. */
 }
