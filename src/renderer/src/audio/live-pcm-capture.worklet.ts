@@ -19,6 +19,11 @@ class LivePcmCaptureProcessor extends AudioWorkletProcessor {
     super()
     this.packetSamples = Number(options?.processorOptions?.packetSamples ?? 2048)
     this.pending = new Float32Array(this.packetSamples * 4)
+    this.port.onmessage = (event: MessageEvent<{ type?: string }>) => {
+      if (event.data?.type === 'flush') {
+        this.flushPending()
+      }
+    }
   }
 
   process(inputs: Float32Array[][]): boolean {
@@ -33,30 +38,41 @@ class LivePcmCaptureProcessor extends AudioWorkletProcessor {
     this.totalFrames += channel.length
 
     while (this.pendingLength >= this.packetSamples) {
-      const packet = this.pending.slice(0, this.packetSamples)
-      const pcm = new Int16Array(this.packetSamples)
-      for (let index = 0; index < this.packetSamples; index += 1) {
-        const sample = Math.max(-1, Math.min(1, packet[index] ?? 0))
-        pcm[index] = sample < 0 ? Math.round(sample * 0x8000) : Math.round(sample * 0x7fff)
-      }
-
-      this.port.postMessage(
-        {
-          type: 'pcm-batch',
-          frameCount: 2048,
-          endFrame: this.totalFrames - (this.pendingLength - this.packetSamples),
-          pcm: pcm.buffer,
-        },
-        [pcm.buffer],
-      )
-
-      if (this.pendingLength > this.packetSamples) {
-        this.pending.copyWithin(0, this.packetSamples, this.pendingLength)
-      }
-      this.pendingLength -= this.packetSamples
+      this.emitPacket(this.packetSamples, this.totalFrames - (this.pendingLength - this.packetSamples))
     }
 
     return true
+  }
+
+  private emitPacket(frameCount: number, endFrame: number): void {
+    const packet = this.pending.slice(0, frameCount)
+    const pcm = new Int16Array(frameCount)
+    for (let index = 0; index < frameCount; index += 1) {
+      const sample = Math.max(-1, Math.min(1, packet[index] ?? 0))
+      pcm[index] = sample < 0 ? Math.round(sample * 0x8000) : Math.round(sample * 0x7fff)
+    }
+
+    this.port.postMessage(
+      {
+        type: 'pcm-batch',
+        frameCount,
+        endFrame,
+        pcm: pcm.buffer,
+      },
+      [pcm.buffer],
+    )
+
+    if (this.pendingLength > frameCount) {
+      this.pending.copyWithin(0, frameCount, this.pendingLength)
+    }
+    this.pendingLength -= frameCount
+  }
+
+  private flushPending(): void {
+    if (this.pendingLength > 0) {
+      this.emitPacket(this.pendingLength, this.totalFrames)
+    }
+    this.port.postMessage({ type: 'pcm-flush-complete' })
   }
 
   private ensureCapacity(nextLength: number): void {

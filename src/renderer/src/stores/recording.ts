@@ -8,11 +8,12 @@ export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopped'
 const LIVE_PCM_SAMPLE_RATE = 16000
 const LIVE_PCM_CHANNELS = 1
 const LIVE_PCM_PACKET_SAMPLES = 2048
-const LIVE_PCM_FIRST_SEND_TARGET_MS = 320
-const LIVE_PCM_IDLE_SEND_TARGET_MS = 224
-const LIVE_PCM_BUSY_SEND_TARGET_MS = 640
-const LIVE_PCM_MAX_BUFFER_MS = 1200
-const LIVE_PCM_MAX_BUFFER_BYTES = 48 * 1024
+const LIVE_PCM_FIRST_SEND_TARGET_MS = 192
+const LIVE_PCM_IDLE_SEND_TARGET_MS = 192
+const LIVE_PCM_BUSY_SEND_TARGET_MS = 320
+const LIVE_PCM_MAX_BUFFER_MS = 640
+const LIVE_PCM_MAX_BUFFER_BYTES = 24 * 1024
+const LIVE_PCM_FLUSH_ACK_TIMEOUT_MS = 150
 
 export const useRecordingStore = defineStore('recording', {
   state: () => ({
@@ -39,6 +40,8 @@ export const useRecordingStore = defineStore('recording', {
     _livePendingFrames: 0 as number,
     _livePendingEndFrame: 0 as number,
     _liveChunkAccepted: false,
+    _pendingWorkletFlushResolve: null as (() => void) | null,
+    _liveStopPromise: null as Promise<boolean> | null,
   }),
 
   getters: {
@@ -80,6 +83,39 @@ export const useRecordingStore = defineStore('recording', {
         offset += chunk.byteLength
       }
       return combined.buffer
+    },
+
+    _appendLivePcmChunk(payload: { frameCount: number; endFrame: number; pcm: ArrayBuffer }): void {
+      this._livePendingChunks.push(payload.pcm)
+      this._livePendingBytes += payload.pcm.byteLength
+      this._livePendingFrames += payload.frameCount
+      this._livePendingEndFrame = payload.endFrame
+    },
+
+    async _requestLivePcmFlush(): Promise<void> {
+      if (!this._pcmNode) return
+
+      await new Promise<void>((resolve) => {
+        let settled = false
+        const finish = (): void => {
+          if (settled) return
+          settled = true
+          this._pendingWorkletFlushResolve = null
+          resolve()
+        }
+
+        this._pendingWorkletFlushResolve = finish
+        this._pcmNode?.port.postMessage({ type: 'flush' })
+        window.setTimeout(finish, LIVE_PCM_FLUSH_ACK_TIMEOUT_MS)
+      })
+    },
+
+    async _flushAndFinalizeLiveTranscript(stopAtMs: number): Promise<boolean> {
+      const transcriptStore = useTranscriptStore()
+      await this._requestLivePcmFlush()
+      await this._flushLivePcm(true)
+      await this._audioContext?.suspend()
+      return await transcriptStore.stopLiveSession(stopAtMs)
     },
 
     async _flushLivePcm(force = false): Promise<void> {
@@ -135,6 +171,7 @@ export const useRecordingStore = defineStore('recording', {
       this._livePendingBytes = 0
       this._livePendingFrames = 0
       this._livePendingEndFrame = 0
+      this._pendingWorkletFlushResolve = null
     },
 
     async startRecording(): Promise<void> {
@@ -154,6 +191,8 @@ export const useRecordingStore = defineStore('recording', {
       this._livePendingFrames = 0
       this._livePendingEndFrame = 0
       this._liveChunkAccepted = false
+      this._pendingWorkletFlushResolve = null
+      this._liveStopPromise = null
 
       const transcriptStore = useTranscriptStore()
       let stream: MediaStream | null = null
@@ -196,14 +235,20 @@ export const useRecordingStore = defineStore('recording', {
         pcmNode.connect(silentGain)
         silentGain.connect(audioContext.destination)
 
-        pcmNode.port.onmessage = (event: MessageEvent<{ type: string; frameCount: number; endFrame: number; pcm: ArrayBuffer }>) => {
-          if (this.recordingState !== 'recording') return
+        pcmNode.port.onmessage = (event: MessageEvent<
+          | { type: 'pcm-batch'; frameCount: number; endFrame: number; pcm: ArrayBuffer }
+          | { type: 'pcm-flush-complete' }
+        >) => {
           const payload = event.data
-          if (!payload || payload.type !== 'pcm-batch') return
-          this._livePendingChunks.push(payload.pcm)
-          this._livePendingBytes += payload.pcm.byteLength
-          this._livePendingFrames += payload.frameCount
-          this._livePendingEndFrame = payload.endFrame
+          if (!payload) return
+
+          if (payload.type === 'pcm-flush-complete') {
+            this._pendingWorkletFlushResolve?.()
+            return
+          }
+
+          if (this.recordingState !== 'recording' && this._pendingWorkletFlushResolve === null) return
+          this._appendLivePcmChunk(payload)
           void this._flushLivePcm(false).catch((error) => {
             this.error = String(error)
             void this.stopRecording()
@@ -226,18 +271,25 @@ export const useRecordingStore = defineStore('recording', {
           this.audioBlob = blob
           this.audioBlobUrl = URL.createObjectURL(blob)
           this.durationMs = this._currentElapsedMs()
-          this.recordingState = 'stopped'
-          this._recorder = null
-          void this._teardownLiveCapture()
-          this._stream?.getTracks().forEach((t) => t.stop())
-          this._stream = null
 
           void (async () => {
-            await this._flushLivePcm(true)
-            const finalized = await transcriptStore.stopLiveSession(this.durationMs)
-            if (!finalized) {
-              this.error = transcriptStore.error ?? 'Live transcription stopped without a final transcript'
+            try {
+              const finalized = this._liveStopPromise
+                ? await this._liveStopPromise
+                : await transcriptStore.stopLiveSession(this.durationMs)
+              if (!finalized) {
+                this.error = transcriptStore.error ?? 'Live transcription stopped without a final transcript'
+              }
+            } catch (error) {
+              this.error = String(error)
             }
+
+            await this._teardownLiveCapture()
+            this._stream?.getTracks().forEach((t) => t.stop())
+            this._stream = null
+            this._recorder = null
+            this._liveStopPromise = null
+            this.recordingState = 'stopped'
           })()
         }
 
@@ -255,7 +307,13 @@ export const useRecordingStore = defineStore('recording', {
 
     async stopRecording(): Promise<void> {
       if (!this._recorder) return
+      const stopAtMs = this._currentElapsedMs()
       const state = this._recorder.state
+
+      if (!this._liveStopPromise) {
+        this._liveStopPromise = this._flushAndFinalizeLiveTranscript(stopAtMs)
+      }
+
       if (state === 'paused') {
         if (this._pauseStart > 0) {
           this._pausedMs += Date.now() - this._pauseStart
@@ -273,11 +331,12 @@ export const useRecordingStore = defineStore('recording', {
         this._recorder.pause()
         this._pauseStart = Date.now()
         this.recordingState = 'paused'
-        void this._audioContext?.suspend()
 
         const transcriptStore = useTranscriptStore()
         void (async () => {
+          await this._requestLivePcmFlush()
           await this._flushLivePcm(true)
+          await this._audioContext?.suspend()
           await transcriptStore.pauseLiveSession(this._currentElapsedMs())
         })()
       }
@@ -322,6 +381,8 @@ export const useRecordingStore = defineStore('recording', {
       this._livePendingFrames = 0
       this._livePendingEndFrame = 0
       this._liveChunkAccepted = false
+      this._pendingWorkletFlushResolve = null
+      this._liveStopPromise = null
       void this._teardownLiveCapture()
       this.resetLevelBars()
     },
