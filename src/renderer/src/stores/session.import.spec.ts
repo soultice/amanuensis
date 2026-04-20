@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useSessionStore } from './session'
+import { useRecordingStore } from './recording'
 import { UNSUPPORTED_IMPORT_MEDIA_MESSAGE } from '../lib/import-media'
 
 function createApiMock(overrides: Partial<Window['api']> = {}): Window['api'] {
@@ -223,6 +224,92 @@ describe('session import intent orchestration', () => {
     expect(sessionStore.lastImportError).toMatchObject({
       reason: 'error',
       entrypoint: 'session-list',
+    })
+  })
+
+  it('consumes accepted intent into canonical session audio state', async () => {
+    const copyAsset = vi.fn(async () => 'copied-track.mp4')
+    ;(window as any).api = createApiMock({ copyAsset })
+
+    const sessionStore = useSessionStore()
+    const recordingStore = useRecordingStore()
+
+    sessionStore.currentSessionId = 'active-session-id'
+    sessionStore.importPhase = 'accepted'
+    sessionStore.pendingImportIntent = {
+      sourcePath: '/tmp/interview.mp4',
+      entrypoint: 'session-list',
+      createNewSession: true,
+    }
+
+    await sessionStore.consumePendingImportIntent()
+
+    expect(copyAsset).toHaveBeenCalledTimes(1)
+    expect(copyAsset).toHaveBeenCalledWith('active-session-id', '/tmp/interview.mp4')
+    expect(recordingStore.audioBlobUrl).toBe('asset://localhost/copied-track.mp4')
+    expect(recordingStore.recordingState).toBe('stopped')
+    expect(sessionStore.importPhase).toBe('idle')
+    expect(sessionStore.pendingImportIntent).toBeNull()
+    expect(sessionStore.lastImportError).toBeNull()
+  })
+
+  it('rejects canonicalization when accepted intent lacks active session id', async () => {
+    const copyAsset = vi.fn(async () => 'copied-track.mp3')
+    ;(window as any).api = createApiMock({ copyAsset })
+
+    const sessionStore = useSessionStore()
+    sessionStore.currentSessionId = null
+    sessionStore.importPhase = 'accepted'
+    sessionStore.pendingImportIntent = {
+      sourcePath: '/tmp/interview.mp3',
+      entrypoint: 'session-list',
+      createNewSession: true,
+    }
+
+    await sessionStore.consumePendingImportIntent()
+
+    expect(copyAsset).not.toHaveBeenCalled()
+    expect(sessionStore.importPhase).toBe('rejected')
+    expect(sessionStore.pendingImportIntent).toBeNull()
+    expect(sessionStore.lastImportError).toMatchObject({
+      reason: 'error',
+      entrypoint: 'session-list',
+      message: 'Unable to start import right now. Please try again.',
+    })
+  })
+
+  it('surfaces copy failures without mutating prior canonical audio state', async () => {
+    const copyAsset = vi.fn(async () => {
+      throw new Error('copy failed')
+    })
+    ;(window as any).api = createApiMock({ copyAsset })
+
+    const sessionStore = useSessionStore()
+    const recordingStore = useRecordingStore()
+
+    recordingStore.audioBlobUrl = 'asset://localhost/previous-track.wav'
+    recordingStore.recordingState = 'stopped'
+
+    sessionStore.currentSessionId = 'active-session-id'
+    sessionStore.importPhase = 'accepted'
+    sessionStore.pendingImportIntent = {
+      sourcePath: '/tmp/interview.wav',
+      entrypoint: 'toolbar-open-session',
+      createNewSession: true,
+    }
+
+    await sessionStore.consumePendingImportIntent()
+
+    expect(copyAsset).toHaveBeenCalledTimes(1)
+    expect(recordingStore.audioBlobUrl).toBe('asset://localhost/previous-track.wav')
+    expect(recordingStore.recordingState).toBe('stopped')
+    expect(sessionStore.importPhase).toBe('rejected')
+    expect(sessionStore.pendingImportIntent).toBeNull()
+    expect(sessionStore.lastImportError).toEqual({
+      reason: 'error',
+      entrypoint: 'toolbar-open-session',
+      message: 'Unable to start import right now. Please try again.',
+      diagnostics: 'Error: copy failed',
     })
   })
 })

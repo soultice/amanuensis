@@ -64,6 +64,16 @@ watch(
   }
 )
 
+// Consume accepted import intents exactly once through a shared app-level orchestrator.
+watch(
+  () => [sessionStore.importPhase, sessionStore.pendingImportIntent?.sourcePath ?? null] as const,
+  async ([phase, sourcePath]) => {
+    if (phase !== 'accepted') return
+    if (!sourcePath || sourcePath.trim().length === 0) return
+    await sessionStore.consumePendingImportIntent()
+  }
+)
+
 async function handleOpenSession(id: string): Promise<void> {
   await sessionStore.openSession(id)
 }

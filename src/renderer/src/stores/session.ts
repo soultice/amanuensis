@@ -80,6 +80,7 @@ export const useSessionStore = defineStore('session', {
     importPhase: 'idle' as ImportPhase,
     pendingImportIntent: null as ImportIntent | null,
     lastImportError: null as ImportErrorState | null,
+    consumingImportIntent: false,
   }),
 
   actions: {
@@ -190,6 +191,51 @@ export const useSessionStore = defineStore('session', {
       this.pendingImportIntent = null
       this.lastImportError = null
       this.importPhase = 'idle'
+    },
+
+    async consumePendingImportIntent(): Promise<void> {
+      if (this.consumingImportIntent) return
+      if (this.importPhase !== 'accepted' || !this.pendingImportIntent) return
+
+      const intent = this.pendingImportIntent
+      const sourcePath = intent.sourcePath
+      if (!this.currentSessionId) {
+        this._rejectImport(intent.entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
+          diagnostics: 'consume-missing-session-id',
+        })
+        return
+      }
+      if (typeof sourcePath !== 'string' || sourcePath.trim().length === 0) {
+        this._rejectImport(intent.entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
+          diagnostics: 'consume-malformed-source-path',
+        })
+        return
+      }
+
+      this.consumingImportIntent = true
+      try {
+        const copiedAsset = await window.api.copyAsset(this.currentSessionId, sourcePath)
+        if (typeof copiedAsset !== 'string' || copiedAsset.trim().length === 0) {
+          throw new Error(`copyAsset malformed response: ${String(copiedAsset)}`)
+        }
+
+        const recordingStore = useRecordingStore()
+        if (recordingStore.audioBlobUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(recordingStore.audioBlobUrl)
+        }
+
+        recordingStore.audioBlob = null
+        recordingStore.audioBlobUrl = `asset://localhost/${copiedAsset}`
+        recordingStore.recordingState = 'stopped'
+        this.audioFileMissing = false
+        this.clearImportIntentState()
+      } catch (error) {
+        this._rejectImport(intent.entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
+          diagnostics: String(error),
+        })
+      } finally {
+        this.consumingImportIntent = false
+      }
     },
 
     /** List all sessions from disk */
