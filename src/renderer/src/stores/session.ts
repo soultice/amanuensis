@@ -200,12 +200,6 @@ export const useSessionStore = defineStore('session', {
 
       const intent = this.pendingImportIntent
       const sourcePath = intent.sourcePath
-      if (!this.currentSessionId) {
-        this._rejectImport(intent.entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
-          diagnostics: 'consume-missing-session-id',
-        })
-        return
-      }
       if (typeof sourcePath !== 'string' || sourcePath.trim().length === 0) {
         this._rejectImport(intent.entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
           diagnostics: 'consume-malformed-source-path',
@@ -215,6 +209,15 @@ export const useSessionStore = defineStore('session', {
 
       this.consumingImportIntent = true
       try {
+        if (!this.currentSessionId) {
+          const createdId = await this.createSession()
+          await this.openSession(createdId)
+        }
+
+        if (!this.currentSessionId) {
+          throw new Error('consume-missing-session-id-after-create')
+        }
+
         const copiedAsset = await window.api.copyAsset(this.currentSessionId, sourcePath)
         if (typeof copiedAsset !== 'string' || copiedAsset.trim().length === 0) {
           throw new Error(`copyAsset malformed response: ${String(copiedAsset)}`)
@@ -230,6 +233,16 @@ export const useSessionStore = defineStore('session', {
         recordingStore.recordingState = 'stopped'
         this.audioFileMissing = false
         this.clearImportIntentState()
+
+        const transcriptStore = useTranscriptStore()
+        try {
+          const buffer = await window.api.readSessionAsset(this.currentSessionId, copiedAsset)
+          const importedAudioBlob = new Blob([buffer], { type: getMediaMimeType(copiedAsset) })
+          await transcriptStore.transcribeBatchAudio(importedAudioBlob, copiedAsset)
+        } catch {
+          transcriptStore.error = '[decode-failure] Audio decode failed before transcription. (canonical-asset-read-failed)'
+          transcriptStore.transcriptState = 'error'
+        }
       } catch (error) {
         this._rejectImport(intent.entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
           diagnostics: String(error),

@@ -229,12 +229,14 @@ describe('session import intent orchestration', () => {
     })
   })
 
-  it('consumes accepted intent into canonical session audio state', async () => {
+  it('consumes accepted intent into canonical session audio state and starts batch transcription', async () => {
     const copyAsset = vi.fn(async () => 'copied-track.mp4')
     ;(window as any).api = createApiMock({ copyAsset })
 
     const sessionStore = useSessionStore()
     const recordingStore = useRecordingStore()
+    const transcriptStore = useTranscriptStore()
+    const transcribeBatchAudio = vi.spyOn(transcriptStore, 'transcribeBatchAudio').mockResolvedValue()
 
     sessionStore.currentSessionId = 'active-session-id'
     sessionStore.importPhase = 'accepted'
@@ -250,16 +252,23 @@ describe('session import intent orchestration', () => {
     expect(copyAsset).toHaveBeenCalledWith('active-session-id', '/tmp/interview.mp4')
     expect(recordingStore.audioBlobUrl).toBe('asset://localhost/copied-track.mp4')
     expect(recordingStore.recordingState).toBe('stopped')
+    expect(transcribeBatchAudio).toHaveBeenCalledTimes(1)
+    expect(transcribeBatchAudio.mock.calls[0]?.[1]).toBe('copied-track.mp4')
     expect(sessionStore.importPhase).toBe('idle')
     expect(sessionStore.pendingImportIntent).toBeNull()
     expect(sessionStore.lastImportError).toBeNull()
   })
 
-  it('rejects canonicalization when accepted intent lacks active session id', async () => {
+  it('creates and opens a new session before canonicalization when no active session exists', async () => {
     const copyAsset = vi.fn(async () => 'copied-track.mp3')
-    ;(window as any).api = createApiMock({ copyAsset })
+    const createSession = vi.fn(async () => 'created-session-id')
+    const openSession = vi.fn(async () => null)
+    ;(window as any).api = createApiMock({ copyAsset, createSession, openSession })
 
     const sessionStore = useSessionStore()
+    const transcriptStore = useTranscriptStore()
+    const transcribeBatchAudio = vi.spyOn(transcriptStore, 'transcribeBatchAudio').mockResolvedValue()
+
     sessionStore.currentSessionId = null
     sessionStore.importPhase = 'accepted'
     sessionStore.pendingImportIntent = {
@@ -270,14 +279,15 @@ describe('session import intent orchestration', () => {
 
     await sessionStore.consumePendingImportIntent()
 
-    expect(copyAsset).not.toHaveBeenCalled()
-    expect(sessionStore.importPhase).toBe('rejected')
+    expect(createSession).toHaveBeenCalledTimes(1)
+    expect(openSession).toHaveBeenCalledWith('created-session-id')
+    expect(copyAsset).toHaveBeenCalledWith('created-session-id', '/tmp/interview.mp3')
+    expect(transcribeBatchAudio).toHaveBeenCalledTimes(1)
+    expect(transcribeBatchAudio.mock.calls[0]?.[1]).toBe('copied-track.mp3')
+    expect(sessionStore.currentSessionId).toBe('created-session-id')
+    expect(sessionStore.importPhase).toBe('idle')
     expect(sessionStore.pendingImportIntent).toBeNull()
-    expect(sessionStore.lastImportError).toMatchObject({
-      reason: 'error',
-      entrypoint: 'session-list',
-      message: 'Unable to start import right now. Please try again.',
-    })
+    expect(sessionStore.lastImportError).toBeNull()
   })
 
   it('surfaces copy failures without mutating prior canonical audio state', async () => {
