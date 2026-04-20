@@ -13,6 +13,15 @@
         ← Sessions
       </button>
 
+      <button
+        class="toolbar__btn toolbar__btn--import"
+        :disabled="importButtonDisabled"
+        :title="importButtonTitle"
+        @click="handleImport"
+      >
+        {{ importButtonLabel }}
+      </button>
+
       <!-- Audio device selector (AUDIO-01) -->
       <select
         v-if="recordingStore.devices.length > 0"
@@ -87,6 +96,14 @@
         :title="liveWarmBadgeTitle"
       >
         {{ liveWarmBadgeLabel }}
+      </span>
+
+      <span
+        v-if="importWarning"
+        class="toolbar__warning"
+        :title="importWarning"
+      >
+        ⚠ {{ importWarning }}
       </span>
 
       <!-- Live transcription warning -->
@@ -252,6 +269,32 @@ const sessionNavigationBlocked = computed<boolean>(() => {
   return recordingStore.isActive || transcriptStore.isLive || transcriptStore.isTranscribing
 })
 
+const isImportPending = computed<boolean>(() => sessionStore.importPhase === 'picking')
+
+const importButtonDisabled = computed<boolean>(() => {
+  return sessionNavigationBlocked.value || isImportPending.value
+})
+
+const importButtonLabel = computed<string>(() => {
+  return isImportPending.value ? 'Importing…' : 'Import Audio'
+})
+
+const importButtonTitle = computed<string>(() => {
+  if (isImportPending.value) return 'Selecting file…'
+  if (recordingStore.isActive) return 'Stop recording before importing'
+  if (transcriptStore.isLive || transcriptStore.isTranscribing) {
+    return 'Wait for live transcription to finish before importing'
+  }
+  return 'Import audio from file'
+})
+
+const importWarning = computed<string | null>(() => {
+  const error = sessionStore.lastImportError
+  if (!error || error.entrypoint !== 'toolbar-open-session') return null
+  if (error.reason === 'cancelled') return null
+  return error.message
+})
+
 const sessionNavigationBlockedTitle = computed<string>(() => {
   if (recordingStore.isActive) return 'Stop recording before leaving'
   if (transcriptStore.isLive || transcriptStore.isTranscribing) return 'Wait for live transcription to finish before switching sessions'
@@ -292,6 +335,11 @@ function handleRecordToggle(): void {
   } else {
     startRecording()
   }
+}
+
+async function handleImport(): Promise<void> {
+  if (importButtonDisabled.value) return
+  await sessionStore.startImportIntent('toolbar-open-session')
 }
 
 onMounted(() => recordingStore.loadDevices())
@@ -413,6 +461,14 @@ function playRecording(): void {
 .toolbar__btn--sessions:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.toolbar__btn--import {
+  background: var(--bg-raised);
+  color: var(--text-em);
+  border: 1px solid var(--border);
+}
+.toolbar__btn--import:hover:not(:disabled) {
+  background: var(--bg);
 }
 .toolbar__btn--warn-copy {
   background: transparent;

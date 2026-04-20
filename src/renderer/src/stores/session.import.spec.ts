@@ -6,8 +6,8 @@ import { UNSUPPORTED_IMPORT_MEDIA_MESSAGE } from '../lib/import-media'
 function createApiMock(overrides: Partial<Window['api']> = {}): Window['api'] {
   return {
     getSidecarPort: vi.fn(async () => 0),
-    getSidecarStatus: vi.fn(async () => 'ready'),
-    getModelStatus: vi.fn(async () => ({ state: 'present' })),
+    getSidecarStatus: vi.fn(async () => 'ready' as const),
+    getModelStatus: vi.fn(async () => ({ state: 'present' as const })),
     downloadModel: vi.fn(async () => undefined),
     restartApp: vi.fn(async () => undefined),
     onModelProgress: vi.fn(() => () => undefined),

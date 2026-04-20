@@ -2,17 +2,31 @@
   <div class="session-list-view">
     <header class="session-list-view__header">
       <h1 class="session-list-view__title">Amanuensis</h1>
-      <button class="session-list-view__new-btn" @click="handleNew">
-        + New Session
-      </button>
-      <button
-        class="session-list-view__theme-btn"
-        :title="themeStore.isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-        @click="themeStore.toggle()"
-      >
-        {{ themeStore.isDark ? '☀' : '☾' }}
-      </button>
+      <div class="session-list-view__header-actions">
+        <button class="session-list-view__new-btn" @click="handleNew">
+          + New Session
+        </button>
+        <button
+          class="session-list-view__import-btn"
+          :disabled="isImportPending"
+          :title="isImportPending ? 'Selecting file…' : 'Import audio from file'"
+          @click="handleImport"
+        >
+          {{ isImportPending ? 'Importing…' : 'Import Audio' }}
+        </button>
+        <button
+          class="session-list-view__theme-btn"
+          :title="themeStore.isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="themeStore.toggle()"
+        >
+          {{ themeStore.isDark ? '☀' : '☾' }}
+        </button>
+      </div>
     </header>
+
+    <p v-if="importWarning" class="session-list-view__import-warning">
+      ⚠ {{ importWarning }}
+    </p>
 
     <main class="session-list-view__body">
       <p v-if="loading" class="session-list-view__hint">Loading…</p>
@@ -46,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useSessionStore } from '../stores/session'
 import { useThemeStore } from '../stores/theme'
 import type { SessionMeta } from '../stores/session'
@@ -70,6 +84,20 @@ async function handleNew(): Promise<void> {
 
 async function handleOpen(id: string): Promise<void> {
   emit('open', id)
+}
+
+const isImportPending = computed<boolean>(() => sessionStore.importPhase === 'picking')
+
+const importWarning = computed<string | null>(() => {
+  const error = sessionStore.lastImportError
+  if (!error || error.entrypoint !== 'session-list') return null
+  if (error.reason === 'cancelled') return null
+  return error.message
+})
+
+async function handleImport(): Promise<void> {
+  if (isImportPending.value) return
+  await sessionStore.startImportIntent('session-list')
 }
 
 async function handleDelete(id: string): Promise<void> {
@@ -102,6 +130,11 @@ function formatDate(iso: string): string {
   flex-shrink: 0;
   gap: 12px;
 }
+.session-list-view__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .session-list-view__title {
   font-size: 1rem;
   font-weight: 600;
@@ -120,6 +153,23 @@ function formatDate(iso: string): string {
   cursor: pointer;
 }
 .session-list-view__new-btn:hover { background: var(--accent-2); }
+.session-list-view__import-btn {
+  padding: 7px 12px;
+  background: var(--bg-raised);
+  color: var(--text-em);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.session-list-view__import-btn:hover:not(:disabled) {
+  background: var(--bg);
+}
+.session-list-view__import-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
 .session-list-view__theme-btn {
   background: transparent;
   color: var(--text-de);
@@ -141,6 +191,14 @@ function formatDate(iso: string): string {
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
+}
+.session-list-view__import-warning {
+  margin: 0;
+  padding: 10px 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 24%, var(--border));
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
+  color: var(--danger);
+  font-size: 0.8rem;
 }
 .session-list-view__hint {
   color: var(--text-de);
