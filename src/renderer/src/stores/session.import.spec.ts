@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useSessionStore } from './session'
 import { useRecordingStore } from './recording'
+import { useSidecarStore } from './sidecar'
+import { useTranscriptStore } from './transcript'
 import { UNSUPPORTED_IMPORT_MEDIA_MESSAGE } from '../lib/import-media'
 
 function createApiMock(overrides: Partial<Window['api']> = {}): Window['api'] {
@@ -311,5 +313,122 @@ describe('session import intent orchestration', () => {
       message: 'Unable to start import right now. Please try again.',
       diagnostics: 'Error: copy failed',
     })
+  })
+
+  it('round-trips import→transcribe→save→reopen with canonical audio and transcript continuity', async () => {
+    const canonicalAsset = 'Interview.CAPTURE.WAV'
+    let savedSessionJson: string | null = null
+
+    const saveSession = vi.fn(async (_sessionId: string, json: string) => {
+      savedSessionJson = json
+    })
+    const openSession = vi.fn(async () => savedSessionJson)
+    const readSessionAsset = vi.fn(async () => new Uint8Array([1, 2, 3, 4]).buffer)
+
+    ;(window as any).api = createApiMock({
+      copyAsset: vi.fn(async () => canonicalAsset),
+      saveSession,
+      openSession,
+      readSessionAsset,
+      listSessions: vi.fn(async () => [{
+        id: 'active-session-id',
+        name: 'Imported Session',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        wordCount: 2,
+      }]),
+    })
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/transcribe/status')) {
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return { ok: true }
+          },
+          async text() {
+            return JSON.stringify({ ok: true })
+          },
+        } as unknown as Response
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            words: [
+              { id: 1, word: 'Hello ', start: 0, end: 0.4, probability: 0.99, segmentId: 0 },
+              { id: 2, word: 'world', start: 0.4, end: 0.9, probability: 0.98, segmentId: 0 },
+            ],
+            segments: [{ id: 0, start: 0, end: 0.9, text: 'Hello world' }],
+            language: 'en',
+            duration: 0.9,
+          }
+        },
+        async text() {
+          return '{}'
+        },
+      } as unknown as Response
+    })
+
+    const sessionStore = useSessionStore()
+    const recordingStore = useRecordingStore()
+    const transcriptStore = useTranscriptStore()
+    const sidecarStore = useSidecarStore()
+
+    sidecarStore.port = 41731
+    sessionStore.currentSessionId = 'active-session-id'
+    sessionStore.importPhase = 'accepted'
+    sessionStore.pendingImportIntent = {
+      sourcePath: '/tmp/interview.WAV',
+      entrypoint: 'session-list',
+      createNewSession: true,
+    }
+
+    await sessionStore.consumePendingImportIntent()
+    expect(recordingStore.audioBlobUrl).toBe(`asset://localhost/${canonicalAsset}`)
+
+    await transcriptStore.transcribeBatchAudio(new Blob(['imported-audio'], { type: 'audio/wav' }), 'interview.WAV')
+    expect(transcriptStore.transcriptState).toBe('complete')
+    expect(transcriptStore.error).toBeNull()
+
+    await sessionStore.save()
+    expect(saveSession).toHaveBeenCalledTimes(1)
+    expect(savedSessionJson).not.toBeNull()
+    if (savedSessionJson === null) {
+      throw new Error('expected saveSession to capture JSON payload')
+    }
+
+    const serialized = JSON.parse(savedSessionJson)
+    expect(serialized.audioPath).toBe(canonicalAsset)
+    expect(serialized.transcript?.words).toHaveLength(2)
+    expect(serialized.transcript?.segments).toHaveLength(1)
+
+    transcriptStore.error = 'stale-error-from-previous-run'
+    transcriptStore.transcriptState = 'error'
+    transcriptStore.words = []
+    transcriptStore.segments = []
+    recordingStore.audioBlobUrl = null
+    recordingStore.audioBlob = null
+
+    await sessionStore.openSession('active-session-id')
+
+    expect(openSession).toHaveBeenCalledWith('active-session-id')
+    expect(readSessionAsset).toHaveBeenCalledWith('active-session-id', canonicalAsset)
+    expect(recordingStore.audioBlobUrl).toBe(`asset://localhost/${canonicalAsset}`)
+    expect(recordingStore.recordingState).toBe('stopped')
+    const reopenedBlob = recordingStore.audioBlob as unknown
+    expect(reopenedBlob).toBeInstanceOf(Blob)
+    expect((reopenedBlob as Blob).type).toBe('audio/wav')
+    expect(transcriptStore.transcriptState).toBe('complete')
+    expect(transcriptStore.error).toBeNull()
+    expect(transcriptStore.words.map((word) => word.word)).toEqual(['Hello ', 'world'])
+    expect(transcriptStore.segments).toEqual([{ id: 0, start: 0, end: 0.9, text: 'Hello world' }])
+    expect(sessionStore.audioFileMissing).toBe(false)
+
+    fetchSpy.mockRestore()
   })
 })

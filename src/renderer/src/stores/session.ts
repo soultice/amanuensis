@@ -271,6 +271,9 @@ export const useSessionStore = defineStore('session', {
         const annotationStore = useAnnotationStore()
         const recordingStore = useRecordingStore()
 
+        // Clear stale diagnostics before hydrating persisted transcript/audio state.
+        transcriptStore.error = null
+
         if (data.transcript) {
           const words = data.transcript.words.map((w) =>
             typeof (w as any).segmentId === 'number' ? w : { ...w, segmentId: 0 }

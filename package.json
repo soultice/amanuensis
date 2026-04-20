@@ -23,7 +23,8 @@
         "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
         "build:electron": "electron-builder",
         "build:sidecar": "cd sidecar && poetry run pyinstaller amanuensis-sidecar.spec --distpath ../dist-sidecar --workpath ../build-sidecar --clean",
-        "build:all": "npm run build:sidecar && npm run build && npm run build:electron"
+        "build:all": "npm run build:sidecar && npm run build && npm run build:electron",
+        "verify:s04": "npm run test -- src/renderer/src/stores/session.import.spec.ts src/renderer/src/stores/session.reopen.spec.ts src/renderer/src/stores/transcript.import.spec.ts src/renderer/src/App.import.spec.ts && poetry run pytest sidecar/tests/test_live_transcription_integration.py -k \"batch\" && npm run typecheck"
     },
     "dependencies": {
         "@electron-toolkit/preload": "^3.0.1",
