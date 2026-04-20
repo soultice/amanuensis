@@ -5,6 +5,7 @@ import { useRecordingStore } from './recording'
 import { usePlaybackStore } from './playback'
 import type { Word, Segment } from './transcript'
 import type { Annotation } from './annotation'
+import { validateImportMediaPath } from '../lib/import-media'
 
 export interface SessionMeta {
   id: string
@@ -27,6 +28,46 @@ interface SessionData {
   annotations: Annotation[]
 }
 
+export type ImportEntrypoint = 'session-list' | 'toolbar-open-session'
+export type ImportPhase = 'idle' | 'picking' | 'rejected' | 'accepted'
+export type ImportRejectionReason = 'unsupported' | 'cancelled' | 'error'
+
+export interface ImportIntent {
+  sourcePath: string
+  entrypoint: ImportEntrypoint
+  createNewSession: true
+}
+
+export interface ImportErrorState {
+  reason: ImportRejectionReason
+  entrypoint: ImportEntrypoint
+  message: string
+  validationReason?: 'empty-path' | 'missing-extension' | 'unsupported-extension'
+  diagnostics?: string
+}
+
+export type ImportIntentResult =
+  | {
+      status: 'accepted'
+      intent: ImportIntent
+    }
+  | {
+      status: 'rejected'
+      reason: ImportRejectionReason
+      message: string
+      entrypoint: ImportEntrypoint
+    }
+
+const IMPORT_FILE_FILTERS = [
+  {
+    name: 'Supported media',
+    extensions: ['mp3', 'mp4', 'm4a', 'wav'],
+  },
+]
+const IMPORT_PICKER_TIMEOUT_MS = 15_000
+const IMPORT_CANCELLED_MESSAGE = 'Import cancelled.'
+const IMPORT_ORCHESTRATION_ERROR_MESSAGE = 'Unable to start import right now. Please try again.'
+
 export const useSessionStore = defineStore('session', {
   state: () => ({
     currentSessionId: null as string | null,
@@ -36,9 +77,121 @@ export const useSessionStore = defineStore('session', {
     lastSavedAt: 0 as number,
     autoSavePeriodMs: 30_000 as number,
     sessionName: '' as string,          // display name of the active session; '' when no session open
+    importPhase: 'idle' as ImportPhase,
+    pendingImportIntent: null as ImportIntent | null,
+    lastImportError: null as ImportErrorState | null,
   }),
 
   actions: {
+    _rejectImport(
+      entrypoint: ImportEntrypoint,
+      reason: ImportRejectionReason,
+      message: string,
+      details?: Pick<ImportErrorState, 'validationReason' | 'diagnostics'>
+    ): ImportIntentResult {
+      this.importPhase = 'rejected'
+      this.pendingImportIntent = null
+      this.lastImportError = {
+        reason,
+        entrypoint,
+        message,
+        ...(details?.validationReason ? { validationReason: details.validationReason } : {}),
+        ...(details?.diagnostics ? { diagnostics: details.diagnostics } : {}),
+      }
+
+      return {
+        status: 'rejected',
+        reason,
+        message,
+        entrypoint,
+      }
+    },
+
+    async _pickImportPath(entrypoint: ImportEntrypoint): Promise<string | ImportIntentResult> {
+      const timeoutSentinel = Symbol('import-picker-timeout')
+      const timeoutPromise = new Promise<symbol>((resolve) => {
+        setTimeout(() => resolve(timeoutSentinel), IMPORT_PICKER_TIMEOUT_MS)
+      })
+
+      let picked: unknown
+      try {
+        picked = await Promise.race([window.api.openFile(IMPORT_FILE_FILTERS), timeoutPromise])
+      } catch (error) {
+        return this._rejectImport(entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
+          diagnostics: String(error),
+        })
+      }
+
+      if (picked === timeoutSentinel) {
+        return this._rejectImport(entrypoint, 'cancelled', IMPORT_CANCELLED_MESSAGE, {
+          diagnostics: `picker-timeout-${IMPORT_PICKER_TIMEOUT_MS}ms`,
+        })
+      }
+
+      if (picked === null) {
+        return this._rejectImport(entrypoint, 'cancelled', IMPORT_CANCELLED_MESSAGE)
+      }
+
+      if (typeof picked !== 'string') {
+        return this._rejectImport(entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
+          diagnostics: `picker-malformed-${typeof picked}`,
+        })
+      }
+
+      return picked
+    },
+
+    async startImportIntent(entrypoint: ImportEntrypoint): Promise<ImportIntentResult> {
+      this.importPhase = 'picking'
+      this.pendingImportIntent = null
+      this.lastImportError = null
+
+      const pickedPath = await this._pickImportPath(entrypoint)
+      if (typeof pickedPath !== 'string') {
+        return pickedPath
+      }
+
+      const validation = validateImportMediaPath(pickedPath)
+      if (!validation.ok) {
+        return this._rejectImport(entrypoint, 'unsupported', validation.message, {
+          validationReason: validation.reason,
+        })
+      }
+
+      const previousSessionId = this.currentSessionId
+      if (entrypoint === 'toolbar-open-session') {
+        try {
+          await this.newSession()
+        } catch (error) {
+          this.currentSessionId = previousSessionId
+          return this._rejectImport(entrypoint, 'error', IMPORT_ORCHESTRATION_ERROR_MESSAGE, {
+            diagnostics: String(error),
+          })
+        }
+      }
+
+      const intent: ImportIntent = {
+        sourcePath: pickedPath,
+        entrypoint,
+        createNewSession: true,
+      }
+
+      this.pendingImportIntent = intent
+      this.importPhase = 'accepted'
+      this.lastImportError = null
+
+      return {
+        status: 'accepted',
+        intent,
+      }
+    },
+
+    clearImportIntentState(): void {
+      this.pendingImportIntent = null
+      this.lastImportError = null
+      this.importPhase = 'idle'
+    },
+
     /** List all sessions from disk */
     async listSessions(): Promise<SessionMeta[]> {
       return await window.api.listSessions()
@@ -206,23 +359,29 @@ export const useSessionStore = defineStore('session', {
     },
 
     /**
-     * Save the current session, reset all stores, then create and open a brand-new
+     * Save the current session, then create and switch into a brand-new empty
      * session — all without transitioning through SessionListView.
      */
     async newSession(): Promise<void> {
-      // Stop auto-save to prevent a race: if the timer fires between _resetStores()
-      // and createSession(), it would write empty data to the old session and could
-      // overwrite the newly-created index entry. We restart after creation.
+      // Stop auto-save to prevent races while save + create run back-to-back.
       this.stopAutoSave()
       try {
         await this.save()
+
+        // Create the next session before resetting in-memory state so creation
+        // failures do not mutate the currently-open session.
+        const id = await this.createSession()
+
         this._resetStores()
         this.audioFileMissing = false
-        const id = await this.createSession()
-        // Set currentSessionId directly — no data to restore for an empty session
         this.currentSessionId = id
-        const sessions = await window.api.listSessions()
-        this.sessionName = sessions.find((session) => session.id === id)?.name ?? ''
+
+        try {
+          const sessions = await window.api.listSessions()
+          this.sessionName = sessions.find((session) => session.id === id)?.name ?? ''
+        } catch {
+          this.sessionName = ''
+        }
       } finally {
         this.startAutoSave()
       }
