@@ -104,6 +104,31 @@ describe('session reopen canonical asset MIME handling', () => {
     expect(recordingStore.audioBlob?.type).toBe('application/octet-stream')
   })
 
+  it('keeps transcript continuity when canonical asset is missing but transcript payload exists', async () => {
+    const readSessionAsset = vi.fn(async () => {
+      throw new Error('asset missing')
+    })
+
+    ;(window as any).api = createApiMock({
+      openSession: vi.fn(async () => makeSessionJson('Interview.CAPTURE.WAV', true)),
+      readSessionAsset,
+    })
+
+    const sessionStore = useSessionStore()
+    const transcriptStore = useTranscriptStore()
+    const recordingStore = useRecordingStore()
+
+    await sessionStore.openSession('session-id')
+
+    expect(sessionStore.audioFileMissing).toBe(true)
+    expect(recordingStore.audioBlobUrl).toBe('asset://localhost/Interview.CAPTURE.WAV')
+    expect(recordingStore.audioBlob).toBeNull()
+    expect(transcriptStore.transcriptState).toBe('complete')
+    expect(transcriptStore.error).toBeNull()
+    expect(transcriptStore.words).toHaveLength(1)
+    expect(transcriptStore.segments).toHaveLength(1)
+  })
+
   it('flags missing canonical assets without crashing restore and keeps diagnostics explicit', async () => {
     const readSessionAsset = vi.fn(async () => {
       throw new Error('asset missing')
