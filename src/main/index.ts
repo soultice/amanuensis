@@ -214,7 +214,7 @@ app.whenReady().then(async () => {
       const mimeTypes: Record<string, string> = {
         png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
         gif: 'image/gif', webp: 'image/webp',
-        mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+        mp3: 'audio/mpeg', mp4: 'audio/mp4', m4a: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg',
         webm: 'audio/webm',
       }
       return new Response(data, {

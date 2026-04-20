@@ -6,6 +6,7 @@ import { usePlaybackStore } from './playback'
 import type { Word, Segment } from './transcript'
 import type { Annotation } from './annotation'
 import { validateImportMediaPath } from '../lib/import-media'
+import { getMediaMimeType } from '../lib/media-mime'
 
 export interface SessionMeta {
   id: string
@@ -326,7 +327,7 @@ export const useSessionStore = defineStore('session', {
             recordingStore.recordingState = 'stopped'
             try {
               const buffer = await window.api.readSessionAsset(id, data.audioPath)
-              recordingStore.audioBlob = new Blob([buffer], { type: 'audio/webm' })
+              recordingStore.audioBlob = new Blob([buffer], { type: getMediaMimeType(data.audioPath) })
               if (data.transcript === null) {
                 await transcriptStore.recoverTranscriptFromAudio(recordingStore.audioBlob)
               }
