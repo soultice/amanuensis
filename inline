@@ -1,0 +1,59 @@
+Confirmed: .planning/phases/28-real-world-live-latency-follow-up-prewarm-diskless-live-inference-and-cadence-tuning/28-RESEARCH.md exists.
+
+1) First 20 lines
+# Phase 28: Real-World Live Latency Follow-Up — Prewarm, Diskless Live Inference, and Cadence Tuning - Research
+
+**Researched:** 2026-04-19
+**Domain:** Real-world live transcription latency after Phase 27
+**Confidence:** HIGH
+
+<user_constraints>
+## User Constraints (from CONTEXT.md)
+
+- **P28-01:** proactively warm the live stack when the model is present so first recording can hit the warm path
+- **P28-02:** warmup must stay fail-open
+- **P28-03:** remove temp-WAV-per-window work from the live hot path if a safe diskless route exists
+- **P28-04:** preserve current transcript and final payload contracts
+- **P28-05:** tune cadence/defaults from measured evidence only
+- **P28-06:** keep `safe_auto` default unless another mode clearly wins on both early and tail behavior
+- **P28-07:** keep a repeatable benchmark path
+- **P28-08:** keep telemetry lightweight
+</user_constraints>
+
+## Summary
+
+2) Section headings list
+- # Phase 28: Real-World Live Latency Follow-Up — Prewarm, Diskless Live Inference, and Cadence Tuning - Research
+- ## User Constraints (from CONTEXT.md)
+- ## Summary
+- ## Recommended Architecture Direction
+- ### 1. Proactive warmup first
+- ### 2. Diskless live inference second
+- ### 3. Measured cadence tuning third
+- ## Evidence and Hotspots
+- ### Verified hotspots
+- ### What not to do yet
+- ## Proposed Phase 28 Plan Breakdown
+- ### Plan 28-01 — Proactive warmup and readiness
+- ### Plan 28-02 — Diskless live inference path
+- ### Plan 28-03 — Benchmark harness and measured cadence tuning
+- ## Verification Strategy
+- ## Bottom Line
+
+3) Final 15 lines
+  - queue depth / worker busy / superseded result counters
+- Verify that final payload shape remains unchanged: `{words, segments, language, duration}` and patch payloads keep `replaceFromWordIndex`.
+
+## Bottom Line
+
+Phase 28 should **not** chase more scheduler complexity first. It should follow the benchmark evidence:
+1. make warmup reliable,
+2. remove disk churn from incremental inference,
+3. then tune cadence from measurements.
+
+That sequencing gives the best chance of improving real-world latency without destabilizing transcript correctness.
+
+---
+
+*Phase: 28-real-world-live-latency-follow-up-prewarm-diskless-live-inference-and-cadence-tuning*
+*Research captured from the 2026-04-19 latency investigation*
