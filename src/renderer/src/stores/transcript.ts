@@ -27,6 +27,8 @@ export interface Segment {
 
 export type TranscriptState = 'empty' | 'transcribing' | 'live' | 'finalizing' | 'complete' | 'error'
 
+type BatchTranscriptionErrorClass = 'sidecar-unavailable' | 'decode-failure' | 'asr-failure'
+
 export const useTranscriptStore = defineStore('transcript', {
   state: () => ({
     transcriptState: 'empty' as TranscriptState,
@@ -227,63 +229,152 @@ export const useTranscriptStore = defineStore('transcript', {
       this._liveCompletePromise = null
     },
 
-    async recoverTranscriptFromAudio(audioBlob: Blob): Promise<void> {
-      if (this._recoveryAttempted) return
+    _setBatchTranscriptionError(kind: BatchTranscriptionErrorClass, reason: string): void {
+      const safeReason = reason.trim() || 'unknown-error'
+      const labels: Record<BatchTranscriptionErrorClass, string> = {
+        'sidecar-unavailable': 'Sidecar transcription service is unavailable.',
+        'decode-failure': 'Audio decode failed before transcription.',
+        'asr-failure': 'Transcription failed in the ASR service.',
+      }
+      this.error = `[${kind}] ${labels[kind]} (${safeReason})`
+      this.transcriptState = 'error'
+    },
 
+    _extractErrorDetail(rawText: string): string {
+      const trimmed = rawText.trim()
+      if (!trimmed) return ''
+      try {
+        const parsed = JSON.parse(trimmed) as { detail?: unknown; message?: unknown }
+        if (typeof parsed.detail === 'string') return parsed.detail
+        if (typeof parsed.message === 'string') return parsed.message
+      } catch {
+        // Fall back to plain text detail below.
+      }
+      return trimmed
+    },
+
+    _classifyHttpFailure(status: number, detailText: string): { kind: BatchTranscriptionErrorClass; reason: string } {
+      const normalizedDetail = detailText.toLowerCase()
+      if (status === 503) {
+        return {
+          kind: 'sidecar-unavailable',
+          reason: `HTTP ${status} model-not-ready`,
+        }
+      }
+      if (normalizedDetail.includes('ffmpeg conversion failed')) {
+        return {
+          kind: 'decode-failure',
+          reason: `HTTP ${status} decode-conversion-failed`,
+        }
+      }
+      if (status === 409) {
+        return {
+          kind: 'asr-failure',
+          reason: `HTTP ${status} busy`,
+        }
+      }
+      return {
+        kind: 'asr-failure',
+        reason: `HTTP ${status}`,
+      }
+    },
+
+    _isValidWordsPayload(value: unknown): value is Word[] {
+      return Array.isArray(value)
+    },
+
+    _isValidSegmentsPayload(value: unknown): value is Segment[] {
+      return Array.isArray(value)
+    },
+
+    _applyBatchTranscriptPayload(payload: unknown): void {
+      const data = payload as {
+        words?: unknown
+        segments?: unknown
+        language?: unknown
+        duration?: unknown
+      }
+
+      if (!this._isValidWordsPayload(data.words)) {
+        throw new Error('malformed response payload: words')
+      }
+      if (data.segments !== undefined && !this._isValidSegmentsPayload(data.segments)) {
+        throw new Error('malformed response payload: segments')
+      }
+      if (typeof data.language !== 'string') {
+        throw new Error('malformed response payload: language')
+      }
+      if (typeof data.duration !== 'number' || Number.isNaN(data.duration)) {
+        throw new Error('malformed response payload: duration')
+      }
+
+      this.words = data.words
+      this.segments = data.segments ?? []
+      this.language = data.language
+      this.duration = data.duration
+      this.error = null
+      this.transcriptState = data.words.length > 0 ? 'complete' : 'empty'
+    },
+
+    async transcribeBatchAudio(audioBlob: Blob | null, filename = 'import.webm'): Promise<void> {
       const sidecarStore = useSidecarStore()
       if (!sidecarStore.port) {
-        this.error = 'Sidecar not ready'
-        this.transcriptState = 'error'
+        this._setBatchTranscriptionError('sidecar-unavailable', 'missing-sidecar-port')
+        return
+      }
+
+      if (!audioBlob || audioBlob.size === 0) {
+        this._setBatchTranscriptionError('asr-failure', 'invalid-audio-payload')
         return
       }
 
       const runId = this._runId + 1
       this._runId = runId
-      this._recoveryAttempted = true
-      this.transcriptState = 'transcribing'
       this._resetForNewTranscript({ preserveDiagnostics: true, preserveFeatureAvailability: true })
-      this._recoveryAttempted = true
       this.transcriptState = 'transcribing'
       this._startPolling(sidecarStore.port)
 
       try {
         const formData = new FormData()
-        formData.append('audio', audioBlob, 'recording.webm')
+        formData.append('audio', audioBlob, filename)
 
         const res = await fetch(`http://localhost:${sidecarStore.port}/transcribe`, {
           method: 'POST',
           body: formData,
         })
 
+        if (!this._isCurrentRun(runId)) return
+
         if (!res.ok) {
-          const detail = await res.text()
-          throw new Error(`Transcription recovery failed (${res.status}): ${detail}`)
+          const detailText = this._extractErrorDetail(await res.text())
+          const classified = this._classifyHttpFailure(res.status, detailText)
+          this._setBatchTranscriptionError(classified.kind, classified.reason)
+          return
         }
 
-        const data = (await res.json()) as {
-          words: Word[]
-          segments: Segment[]
-          language: string
-          duration: number
+        const payload = await res.json()
+        this._applyBatchTranscriptPayload(payload)
+      } catch (error) {
+        if (!this._isCurrentRun(runId)) return
+
+        if (error instanceof Error && error.message.includes('malformed response payload')) {
+          this._setBatchTranscriptionError('asr-failure', 'malformed response payload')
+          return
         }
 
-        if (!this._isCurrentRun(runId)) return
-
-        this.words = data.words
-        this.segments = data.segments ?? []
-        this.language = data.language
-        this.duration = data.duration
-        this.error = null
-        this.transcriptState = 'complete'
-      } catch (err) {
-        if (!this._isCurrentRun(runId)) return
-        this.error = String(err)
-        this.transcriptState = 'error'
+        this._setBatchTranscriptionError('sidecar-unavailable', 'network/connectivity')
       } finally {
         if (this._isCurrentRun(runId)) {
           this._stopPolling()
         }
       }
+    },
+
+    async recoverTranscriptFromAudio(audioBlob: Blob): Promise<void> {
+      if (this._recoveryAttempted) return
+      this._recoveryAttempted = true
+      await this.transcribeBatchAudio(audioBlob, 'recording.webm')
+      this._recoveryAttempted = true
     },
 
     async prepareLiveStream(params: {
