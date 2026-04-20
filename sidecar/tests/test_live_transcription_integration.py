@@ -84,6 +84,69 @@ def test_batch_recovery_endpoint_still_available(monkeypatch) -> None:
     assert set(['words', 'segments', 'language', 'duration']).issubset(payload.keys())
 
 
+def test_batch_recovery_missing_audio_returns_validation_error(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    response = client.post('/transcribe')
+
+    assert response.status_code == 422
+
+
+def test_batch_recovery_decode_failure_surfaces_detail_and_error_state(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    monkeypatch.setattr(
+        transcribe_routes,
+        'transcribe_file',
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError('ffmpeg conversion failed: invalid data found')),
+    )
+    state.transcription_status = {'state': 'idle', 'progress': 0, 'error': None}
+
+    response = client.post('/transcribe', files={'audio': ('recording.webm', b'bad-webm', 'audio/webm')})
+
+    assert response.status_code == 500
+    assert response.json()['detail'] == 'ffmpeg conversion failed: invalid data found'
+    assert state.transcription_status == {
+        'state': 'error',
+        'progress': 0,
+        'error': 'ffmpeg conversion failed: invalid data found',
+    }
+
+
+def test_batch_recovery_asr_failure_surfaces_detail_and_error_state(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    monkeypatch.setattr(
+        transcribe_routes,
+        'transcribe_file',
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError('asr backend failed: decoder exhausted retries')),
+    )
+    state.transcription_status = {'state': 'idle', 'progress': 0, 'error': None}
+
+    response = client.post('/transcribe', files={'audio': ('recording.webm', b'fake-webm', 'audio/webm')})
+
+    assert response.status_code == 500
+    assert response.json()['detail'] == 'asr backend failed: decoder exhausted retries'
+    assert state.transcription_status == {
+        'state': 'error',
+        'progress': 0,
+        'error': 'asr backend failed: decoder exhausted retries',
+    }
+
+
+def test_batch_recovery_returns_409_when_lock_is_already_held(monkeypatch) -> None:
+    client = _client(monkeypatch)
+
+    asyncio.run(transcribe_routes._transcribe_lock.acquire())
+    try:
+        response = client.post('/transcribe', files={'audio': ('recording.webm', b'fake-webm', 'audio/webm')})
+    finally:
+        transcribe_routes._transcribe_lock.release()
+
+    assert response.status_code == 409
+    assert response.json()['detail'] == 'Transcription already in progress'
+
+
 def test_live_happy_path(monkeypatch) -> None:
     client = _client(monkeypatch)
 
