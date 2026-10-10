@@ -14,6 +14,7 @@ ModelState = Literal["present", "downloading", "missing", "error"]
 class ModelManager:
     MODEL_REPO = "Systran/faster-whisper-large-v3"
     MODEL_MARKER = "model.bin"  # File whose existence confirms a complete download
+    EXPECTED_BYTES = 3_090_000_000  # ~3.09 GB — used to estimate download progress
 
     def __init__(self, user_data_dir: str) -> None:
         self._model_dir = Path(user_data_dir) / "models" / "large-v3"
@@ -58,6 +59,28 @@ class ModelManager:
             self._progress = 0
             self._error = None
 
+        stop_poll = threading.Event()
+
+        def _poll_size() -> None:
+            while not stop_poll.is_set():
+                try:
+                    total = sum(
+                        f.stat().st_size
+                        for f in self._model_dir.rglob("*")
+                        if f.is_file()
+                    )
+                    pct = min(99, int(total * 100 / self.EXPECTED_BYTES))
+                    with self._lock:
+                        self._progress = pct
+                    if self._progress_callback:
+                        self._progress_callback(pct)
+                except Exception:
+                    pass
+                stop_poll.wait(0.5)
+
+        poller = threading.Thread(target=_poll_size, daemon=True)
+        poller.start()
+
         try:
             from huggingface_hub import snapshot_download  # type: ignore
 
@@ -81,3 +104,5 @@ class ModelManager:
             with self._lock:
                 self._state = "error"
                 self._error = str(exc)
+        finally:
+            stop_poll.set()
